@@ -1,39 +1,6 @@
 import numpy as np
 import copy as cp
 
-
-from pyscf import mcscf, fci
-from pyscf.hci import hci
-from pyscf.hci.hci import to_fci
-from pyscf.fci.addons import overlap
-
-
-def get_ground_state_overlap(mf, civec, active_electrons, active_orbitals, method='fci'):
-    """
-    Calculates the (approximate) ground state and determines the overlap with the trial
-    wavefunction.
-    :param mf: pyscf MF object
-    :param method: method to calculate (approximate) ground state, currently only "fci" and "hsci"
-                   available
-    """
-    # Get ground state (in active space)
-    mc = mcscf.CASCI(mf, active_orbitals, active_electrons)
-    assert sum(mc.nelecas) == active_electrons, "electrons in active space does not match"
-
-    h1, core_energy = mc.get_h1eff()
-    h2 = mc.get_h2eff()
-    if method == 'fci':
-        cisolver = fci.FCI(mf.mol)
-    elif method == 'hsci':
-        cisolver = hci.SCI(mf.mol)
-        cisolver.select_cutoff = 1e-8
-
-    e, gs_civec = cisolver.kernel(h1, h2, active_orbitals, nelec=mf.mol.nelec, ecore=core_energy)
-    fcivec_trial = to_fci(civec, active_orbitals, mc.nelecas)
-
-    return overlap(gs_civec, fcivec_trial, active_orbitals, active_electrons)
-
-
 def calculate_orbital_lists(mf, active_orbitals, active_electrons):
     """
     :param mf: mean field object from pyscf

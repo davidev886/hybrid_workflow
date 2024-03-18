@@ -6,6 +6,47 @@ import openfermion as of
 from src.pyscf_scripts import normal_ordering_swap
 
 
+def of_spin_operator(name: str, n_qubits=4):
+    """The name can either be: number, alpha, beta, projected or total."""
+
+    import openfermion as of
+    operator = of.FermionOperator()
+
+    if name == "number":
+        for i in range(n_qubits):
+            operator += of.FermionOperator(
+                '{index}^ {index}'.format(index=i, ))
+
+    elif name == "alpha":
+        for i in range(n_qubits):
+            if i % 2 == 0:
+                operator += of.FermionOperator(
+                    '{index}^ {index}'.format(index=i, ))
+
+    elif name == "beta":
+        for i in range(n_qubits):
+            if i % 2 == 1:
+                operator += of.FermionOperator(
+                    '{index}^ {index}'.format(index=i, ))
+
+    elif name == "projected":
+        alpha_number_operator = of.FermionOperator()
+        beta_number_operator = of.FermionOperator()
+
+        for i in range(n_qubits):
+            if i % 2 == 0:
+                alpha_number_operator += of.FermionOperator(
+                    '{index}^ {index}'.format(index=i, ))
+            elif i % 2 == 1:
+                beta_number_operator += of.FermionOperator(
+                    '{index}^ {index}'.format(index=i, ))
+        operator = 1 / 2 * (alpha_number_operator - beta_number_operator)
+
+    sparse_operator = of.get_sparse_operator(operator, n_qubits=n_qubits)
+
+    return sparse_operator
+
+
 def of_spin_square_from_coeff(coeff, occas, occbs, n_spatial):
     """
     This function calculates the expectation value of S^2 by transforming the list of coefficients
@@ -17,7 +58,7 @@ def of_spin_square_from_coeff(coeff, occas, occbs, n_spatial):
     :param n_spatial: number of spatial orbitals
     :return: S^2 and Sz expectation value
     """
-    n_so = 2*n_spatial
+    n_so = 2 * n_spatial
     wf = np.zeros(2 ** n_so, dtype=complex)
 
     for k in range(len(coeff)):
