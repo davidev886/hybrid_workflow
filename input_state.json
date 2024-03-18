@@ -12,5 +12,6 @@
   "target" : "",
   "optimizer_type": "scipy",
   "data_dir": "ID",
-  "file_wavefunction" : "state_vec_11.dat"
+  "file_wavefunction" : "state_vec_11.dat",
+  "ncore_electrons": 0
 }
