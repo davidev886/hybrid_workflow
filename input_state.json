@@ -1,0 +1,16 @@
+{
+  "num_active_orbitals": 5,
+  "num_active_electrons": 5,
+  "hamiltonian_fname" : "ham/FeNTA_s_1_cc-pvtz_5e_5o/ham_FeNTA_cc-pvtz_5e_5o.pickle",
+  "spin": 1,
+  "chkptfile_cas": "FeNTA_spin_1/basis_cc-pVTZ/CAS_5_5/mcscf.chk",
+  "chkptfile_rohf": "FeNTA_spin_1/basis_cc-pVTZ/ROHF/scfref.chk",
+  "basis": "cc-pVTZ",
+  "atom": "geo.xyz",
+  "dmrg": 0,
+  "dmrg_states": 200,
+  "target" : "",
+  "optimizer_type": "scipy",
+  "data_dir": "ID",
+  "file_wavefunction" : "state_vec_11.dat"
+}
