@@ -154,7 +154,6 @@ class IpieInput(object):
             scf_data = load_from_pyscf_chkfile(pyscf_chkfile)
         mol = scf_data["mol"]
         self.mol_nelec = mol.nelec
-        return 0
         hcore = scf_data["hcore"]
         ortho_ao_mat = scf_data["X"]
         mo_coeffs = scf_data["mo_coeff"]
