@@ -92,6 +92,7 @@ class IpieInput(object):
         self.n_alpha = int((self.num_active_electrons + self.spin) / 2)
         self.n_beta = int((self.num_active_electrons - self.spin) / 2)
         self.mol_nelec = None
+        self.trial_name = None
 
     def gen_wave_function(self):
         """
@@ -122,7 +123,7 @@ class IpieInput(object):
         coeff = coeff[ixs]
         occas = np.array(occas)[ixs]
         occbs = np.array(occbs)[ixs]
-
+        self.trial_name = f'trial_{len(coeff)}.h5'
         write_wavefunction((coeff, occas, occbs),
                            os.path.join(file_path, f'trial_{len(coeff)}.h5'))
 
@@ -205,7 +206,7 @@ def main():
     )
 
     # Build trial wavefunction
-    with h5py.File(os.path.join(input_ipie.file_path, "trial_100.h5"), "r") as fh5:
+    with h5py.File(os.path.join(input_ipie.file_path, input_ipie.trial_name), "r") as fh5:
         coeff = fh5["ci_coeffs"][:]
         occa = fh5["occ_alpha"][:]
         occb = fh5["occ_beta"][:]
