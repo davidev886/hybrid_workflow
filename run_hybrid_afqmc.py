@@ -97,6 +97,7 @@ class IpieInput(object):
         self.filen_state_vec = options.get("file_wavefunction", None)
         self.str_date_0 = datetime.today().strftime('%Y%m%d_%H%M%S')
         self.str_date = options.get("data_dir", "")
+        self.mcscf = options.get("mcscf", 1)
         os.makedirs(self.str_date, exist_ok=True)
 
         self.n_qubits = 2 * self.num_active_orbitals
@@ -107,8 +108,14 @@ class IpieInput(object):
 
         self.n_alpha = int((self.num_active_electrons + self.spin) / 2)
         self.n_beta = int((self.num_active_electrons - self.spin) / 2)
-        self.mol_nelec = None
-        self.trial_name = None
+
+        pyscf_chkfile = self.chkptfile_rohf
+        if self.mcscf:
+            self.scf_data = load_from_pyscf_chkfile(pyscf_chkfile, base="mcscf")
+        else:
+            self.scf_data = load_from_pyscf_chkfile(pyscf_chkfile)
+        self.mol = self.scf_data["mol"]
+        self.mol_nelec = self.mol.nelec
 
     def gen_wave_function(self):
         """
@@ -160,47 +167,45 @@ class IpieInput(object):
                         verbose: bool = True,
                         chol_cut: float = 1e-5,
                         ortho_ao: bool = False,
-                        mcscf: bool = False,
                         num_frozen_core: int = 0,
                         generate_ham: bool = True
                         ) -> None:
         """
         adapted function gen_ipie_input_from_pyscf_chk from ipie/utils/from_pyscf.py
         """
-        pyscf_chkfile = self.chkptfile_rohf
-        if mcscf:
-            scf_data = load_from_pyscf_chkfile(pyscf_chkfile, base="mcscf")
-        else:
-            scf_data = load_from_pyscf_chkfile(pyscf_chkfile)
-        mol = scf_data["mol"]
-        self.mol_nelec = mol.nelec
-        if generate_ham:
-            hcore = scf_data["hcore"]
-            ortho_ao_mat = scf_data["X"]
-            mo_coeffs = scf_data["mo_coeff"]
-            mo_occ = scf_data["mo_occ"]
-            if ortho_ao:
-                basis_change_matrix = ortho_ao_mat
-            else:
-                basis_change_matrix = mo_coeffs
+        scf_data = self.scf_data
+        mol = self.mol
 
-                if isinstance(mo_coeffs, list) or len(mo_coeffs.shape) == 3:
-                    if verbose:
-                        print(
-                            "# UHF mo coefficients found and ortho-ao == False. Using"
-                            " alpha mo coefficients for basis transformation."
-                        )
-                    basis_change_matrix = mo_coeffs[0]
-            ham = generate_hamiltonian(
-                mol,
-                mo_coeffs,
-                hcore,
-                basis_change_matrix,
-                chol_cut=chol_cut,
-                num_frozen_core=num_frozen_core,
-                verbose=verbose,
-            )
-            write_hamiltonian(ham.H1[0], copy_LPX_to_LXmn(ham.chol), ham.ecore, filename=os.path.join(self.file_path, hamil_file))
+        hcore = scf_data["hcore"]
+        ortho_ao_mat = scf_data["X"]
+        mo_coeffs = scf_data["mo_coeff"]
+        mo_occ = scf_data["mo_occ"]
+        if ortho_ao:
+            basis_change_matrix = ortho_ao_mat
+        else:
+            basis_change_matrix = mo_coeffs
+
+            if isinstance(mo_coeffs, list) or len(mo_coeffs.shape) == 3:
+                if verbose:
+                    print(
+                        "# UHF mo coefficients found and ortho-ao == False. Using"
+                        " alpha mo coefficients for basis transformation."
+                    )
+                basis_change_matrix = mo_coeffs[0]
+        ham = generate_hamiltonian(
+            mol,
+            mo_coeffs,
+            hcore,
+            basis_change_matrix,
+            chol_cut=chol_cut,
+            num_frozen_core=num_frozen_core,
+            verbose=verbose,
+        )
+        write_hamiltonian(ham.H1[0],
+                          copy_LPX_to_LXmn(ham.chol),
+                          ham.ecore,
+                          filename=os.path.join(self.file_path, hamil_file)
+                          )
 
     def check_energy_state(self):
         filen_state_vec = self.filen_state_vec
@@ -227,7 +232,7 @@ def main():
 
     input_ipie = IpieInput(sys.argv[1])
 
-    input_ipie.gen_hamiltonian(mcscf=True, chol_cut=1e-5, generate_ham=False)
+    input_ipie.gen_hamiltonian(chol_cut=1e-5)
     input_ipie.gen_wave_function()
 
     input_ipie.check_energy_state()
