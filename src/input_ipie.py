@@ -70,9 +70,7 @@ def get_coeff_wf(final_state_vector, ncore_electrons=None, thres=1e-6):
 
 
 class IpieInput(object):
-    def __init__(self, options_file):
-        with open(options_file) as f:
-            options = json.load(f)
+    def __init__(self, options):
 
         self.num_active_orbitals = options.get("num_active_orbitals", 5)
         self.num_active_electrons = options.get("num_active_electrons", 5)
@@ -93,6 +91,7 @@ class IpieInput(object):
         self.str_date = options.get("data_dir", "")
         self.mcscf = options.get("mcscf", 1)
         self.chol_cut = options.get("chol_cut", 1e-5)
+        self.chol_hamil_file = options.get("chol_hamil_file", "hamiltonian.h5")
         self.generate_chol_hamiltonian = options.get("generate_chol_hamiltonian", 0)
         os.makedirs(self.str_date, exist_ok=True)
 
@@ -163,7 +162,6 @@ class IpieInput(object):
             fh5['nelec'] = (n_alpha, n_beta)
 
     def gen_hamiltonian(self,
-                        hamil_file: str = "hamiltonian.h5",
                         verbose: bool = True,
                         ortho_ao: bool = False,
                         num_frozen_core: int = 0,
@@ -175,6 +173,7 @@ class IpieInput(object):
         scf_data = self.scf_data
         mol = self.mol
         chol_cut = self.chol_cut
+        hamil_file = self.chol_hamil_file
         hcore = scf_data["hcore"]
         ortho_ao_mat = scf_data["X"]
         mo_coeffs = scf_data["mo_coeff"]

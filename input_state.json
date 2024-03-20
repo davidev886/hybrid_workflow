@@ -11,10 +11,10 @@
   "dmrg_states": 200,
   "target" : "",
   "optimizer_type": "scipy",
-  "data_dir": "ID",
+  "data_dir": "./files_afqmc",
   "file_wavefunction" : "state_vec_1.dat",
-  "ncore_electrons": 69,
-  "generate_chol_hamiltonian": 0,
+  "ncore_electrons": 0,
+  "generate_chol_hamiltonian": 1,
   "chol_cut": 1e-5,
   "dir_integral" : "ham/FeNTA_s_1_cc-pvtz_5e_5o"
 }

@@ -1,25 +1,29 @@
 import sys
 import numpy as np
-from src.input_ipie import IpieInput
+import os
+import json
 import h5py
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
-import os
+from src.input_ipie import IpieInput
 
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=10000)
-    option_file = sys.argv[1]
-    input_ipie = IpieInput(option_file)
+    options_file = sys.argv[1]
+    with open(options_file) as f:
+        options = json.load(f)
+
+    input_ipie = IpieInput(options)
 
     if input_ipie.generate_chol_hamiltonian:
         input_ipie.gen_hamiltonian()
     input_ipie.gen_wave_function()
 
     input_ipie.check_energy_state()
-    with h5py.File("hamiltonian.h5") as fa:
+    with h5py.File(os.path.join(input_ipie.file_path, input_ipie.chol_hamil_file)) as fa:
         chol = fa["LXmn"][()]
         h1e = fa["hcore"][()]
         e0 = fa["e0"][()]
