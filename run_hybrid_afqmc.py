@@ -161,6 +161,7 @@ class IpieInput(object):
                         ortho_ao: bool = False,
                         mcscf: bool = False,
                         num_frozen_core: int = 0,
+                        generate_ham: bool = True
                         ) -> None:
         """
         adapted function gen_ipie_input_from_pyscf_chk from ipie/utils/from_pyscf.py
@@ -172,32 +173,33 @@ class IpieInput(object):
             scf_data = load_from_pyscf_chkfile(pyscf_chkfile)
         mol = scf_data["mol"]
         self.mol_nelec = mol.nelec
-        hcore = scf_data["hcore"]
-        ortho_ao_mat = scf_data["X"]
-        mo_coeffs = scf_data["mo_coeff"]
-        mo_occ = scf_data["mo_occ"]
-        if ortho_ao:
-            basis_change_matrix = ortho_ao_mat
-        else:
-            basis_change_matrix = mo_coeffs
+        if generate_ham:
+            hcore = scf_data["hcore"]
+            ortho_ao_mat = scf_data["X"]
+            mo_coeffs = scf_data["mo_coeff"]
+            mo_occ = scf_data["mo_occ"]
+            if ortho_ao:
+                basis_change_matrix = ortho_ao_mat
+            else:
+                basis_change_matrix = mo_coeffs
 
-            if isinstance(mo_coeffs, list) or len(mo_coeffs.shape) == 3:
-                if verbose:
-                    print(
-                        "# UHF mo coefficients found and ortho-ao == False. Using"
-                        " alpha mo coefficients for basis transformation."
-                    )
-                basis_change_matrix = mo_coeffs[0]
-        ham = generate_hamiltonian(
-            mol,
-            mo_coeffs,
-            hcore,
-            basis_change_matrix,
-            chol_cut=chol_cut,
-            num_frozen_core=num_frozen_core,
-            verbose=verbose,
-        )
-        write_hamiltonian(ham.H1[0], copy_LPX_to_LXmn(ham.chol), ham.ecore, filename=os.path.join(self.file_path, hamil_file))
+                if isinstance(mo_coeffs, list) or len(mo_coeffs.shape) == 3:
+                    if verbose:
+                        print(
+                            "# UHF mo coefficients found and ortho-ao == False. Using"
+                            " alpha mo coefficients for basis transformation."
+                        )
+                    basis_change_matrix = mo_coeffs[0]
+            ham = generate_hamiltonian(
+                mol,
+                mo_coeffs,
+                hcore,
+                basis_change_matrix,
+                chol_cut=chol_cut,
+                num_frozen_core=num_frozen_core,
+                verbose=verbose,
+            )
+            write_hamiltonian(ham.H1[0], copy_LPX_to_LXmn(ham.chol), ham.ecore, filename=os.path.join(self.file_path, hamil_file))
 
     def check_energy_state(self):
         filen_state_vec = self.filen_state_vec
@@ -224,7 +226,7 @@ def main():
 
     input_ipie = IpieInput(sys.argv[1])
 
-    input_ipie.gen_hamiltonian(mcscf=True, chol_cut=1e-5)
+    input_ipie.gen_hamiltonian(mcscf=True, chol_cut=1e-5, generate_ham=False)
     input_ipie.gen_wave_function()
 
     input_ipie.check_energy_state()
