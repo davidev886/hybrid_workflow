@@ -19,6 +19,22 @@ from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked, ParticleHole
 
+import pickle
+
+
+def convert_state_big_endian(state_little_endian):
+
+    state_big_endian = 0. * state_little_endian
+
+    n_qubits = int(np.log2(state_big_endian.size))
+    for j, val in enumerate(state_little_endian):
+        little_endian_pos = np.binary_repr(j, n_qubits)
+        big_endian_pos = little_endian_pos[::-1]
+        int_big_endian_pos = int(big_endian_pos, 2)
+        state_big_endian[int_big_endian_pos] = state_little_endian[j]
+
+    return state_big_endian
+
 
 def get_coeff_wf(final_state_vector, ncore_electrons=None, thres=1e-6):
     """
@@ -108,6 +124,8 @@ class IpieInput(object):
 
         final_state_vector = np.loadtxt(filen_state_vec, dtype=complex)
 
+        final_state_vector = convert_state_big_endian(final_state_vector)
+
         normalization = np.sqrt(np.dot(final_state_vector.T.conj(), final_state_vector))
         final_state_vector /= normalization
 
@@ -181,14 +199,35 @@ class IpieInput(object):
         )
         write_hamiltonian(ham.H1[0], copy_LPX_to_LXmn(ham.chol), ham.ecore, filename=os.path.join(self.file_path, hamil_file))
 
+    def check_energy_state(self):
+        filen_state_vec = self.filen_state_vec
+
+        final_state_vector = np.loadtxt(filen_state_vec, dtype=complex)
+
+        final_state_vector = convert_state_big_endian(final_state_vector)
+        normalization = np.sqrt(np.dot(final_state_vector.T.conj(), final_state_vector))
+        final_state_vector /= normalization
+
+        filehandler = open(self.hamiltonian_fname, 'rb')
+        jw_hamiltonian = pickle.load(filehandler)
+
+        jw_hamiltonian_sparse = get_sparse_operator(jw_hamiltonian, 2 * self.num_active_orbitals)
+
+        energy = final_state_vector.conj().T @ jw_hamiltonian_sparse @ final_state_vector
+        print(f"# Energy of the trial {self.filen_state_vec} is ", energy)
+
+        return energy
+
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=10000)
 
     input_ipie = IpieInput(sys.argv[1])
-    input_ipie.gen_hamiltonian(mcscf=True, chol_cut=1e-1)
+
+    input_ipie.gen_hamiltonian(mcscf=True, chol_cut=1e-5)
     input_ipie.gen_wave_function()
 
+    input_ipie.check_energy_state()
     with h5py.File("hamiltonian.h5") as fa:
         chol = fa["LXmn"][()]
         h1e = fa["hcore"][()]
@@ -238,6 +277,7 @@ def main():
 
     afqmc_msd.run()
     afqmc_msd.finalise(verbose=True)
+
 
 if __name__ == "__main__":
     main()

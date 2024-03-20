@@ -12,6 +12,7 @@
   "target" : "",
   "optimizer_type": "scipy",
   "data_dir": "ID",
-  "file_wavefunction" : "state_vec_11.dat",
-  "ncore_electrons": 0
+  "file_wavefunction" : "state_vec_1.dat",
+  "ncore_electrons": 0,
+  "dir_integral" : "ham/FeNTA_s_1_cc-pvtz_5e_5o"
 }
