@@ -132,10 +132,11 @@ class IpieInput(object):
         spin_sq_value = final_state_vector.conj().T @ spin_s_square @ final_state_vector
         spin_proj = final_state_vector.conj().T @ spin_s_z @ final_state_vector
 
-        print(spin_sq_value)
-        print(spin_proj)
-        print(ncore_electrons)
-        coeff, occbs, occas = get_coeff_wf(final_state_vector, ncore_electrons)
+        print("spin_sq_value", spin_sq_value)
+        print("spin_proj", spin_proj)
+        print("ncore_electrons", ncore_electrons)
+
+        coeff, occas, occbs = get_coeff_wf(final_state_vector, ncore_electrons)
         coeff = np.array(coeff, dtype=complex)
         ixs = np.argsort(np.abs(coeff))[::-1]
         coeff = coeff[ixs]
