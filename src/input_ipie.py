@@ -9,7 +9,10 @@ from datetime import datetime
 import h5py
 
 from ipie.utils.io import write_hamiltonian, write_wavefunction
-from ipie.utils.from_pyscf import load_from_pyscf_chkfile, generate_hamiltonian, copy_LPX_to_LXmn
+from ipie.utils.from_pyscf import (load_from_pyscf_chkfile,
+                                   generate_hamiltonian,
+                                   copy_LPX_to_LXmn,
+                                   generate_wavefunction_from_mo_coeff)
 
 from src.spin_square import of_spin_operator
 from src.pyscf_scripts import normal_ordering_swap
@@ -93,8 +96,9 @@ class IpieInput(object):
         self.chol_cut = options.get("chol_cut", 1e-5)
         self.chol_hamil_file = options.get("chol_hamil_file", "hamiltonian.h5")
         self.generate_chol_hamiltonian = options.get("generate_chol_hamiltonian", 0)
-
+        self.ortho_ao = options.get("ortho_ao", 0)
         self.n_qubits = 2 * self.num_active_orbitals
+        self.num_frozen_core =  options.get("num_frozen_core", 0)
 
         self.file_path = self.str_date
 
@@ -128,53 +132,74 @@ class IpieInput(object):
         """
             doc
         """
+        mol = self.mol
         num_active_orbitals = self.num_active_orbitals
         num_active_electrons = self.num_active_electrons
         filen_state_vec = self.filen_state_vec
         file_path = self.file_path
         ncore_electrons = self.ncore_electrons
-        spin_s_square = get_sparse_operator(s_squared_operator(num_active_orbitals))
-        spin_s_z = of_spin_operator("projected", 2 * num_active_orbitals)
+        if self.mcscf:
+            spin_s_square = get_sparse_operator(s_squared_operator(num_active_orbitals))
+            spin_s_z = of_spin_operator("projected", 2 * num_active_orbitals)
 
-        final_state_vector = np.loadtxt(filen_state_vec, dtype=complex)
+            final_state_vector = np.loadtxt(filen_state_vec, dtype=complex)
 
-        final_state_vector = convert_state_big_endian(final_state_vector)
+            final_state_vector = convert_state_big_endian(final_state_vector)
 
-        normalization = np.sqrt(np.dot(final_state_vector.T.conj(), final_state_vector))
-        final_state_vector /= normalization
+            normalization = np.sqrt(np.dot(final_state_vector.T.conj(), final_state_vector))
+            final_state_vector /= normalization
 
-        spin_sq_value = final_state_vector.conj().T @ spin_s_square @ final_state_vector
-        spin_proj = final_state_vector.conj().T @ spin_s_z @ final_state_vector
+            spin_sq_value = final_state_vector.conj().T @ spin_s_square @ final_state_vector
+            spin_proj = final_state_vector.conj().T @ spin_s_z @ final_state_vector
 
-        print("# spin_sq_value", spin_sq_value)
-        print("# spin_proj", spin_proj)
-        print("# ncore_electrons", ncore_electrons)
+            print("# spin_sq_value", spin_sq_value)
+            print("# spin_proj", spin_proj)
+            print("# ncore_electrons", ncore_electrons)
 
-        coeff, occas, occbs = get_coeff_wf(final_state_vector, ncore_electrons)
-        coeff = np.array(coeff, dtype=complex)
-        ixs = np.argsort(np.abs(coeff))[::-1]
-        coeff = coeff[ixs]
-        occas = np.array(occas)[ixs]
-        occbs = np.array(occbs)[ixs]
+            coeff, occas, occbs = get_coeff_wf(final_state_vector, ncore_electrons)
+            coeff = np.array(coeff, dtype=complex)
+            ixs = np.argsort(np.abs(coeff))[::-1]
+            coeff = coeff[ixs]
+            occas = np.array(occas)[ixs]
+            occbs = np.array(occbs)[ixs]
 
-        self.trial_name = f'{filen_state_vec}_trial_{len(coeff)}.h5'
-        write_wavefunction((coeff, occas, occbs),
-                           os.path.join(file_path, self.trial_name))
+            self.trial_name = f'{filen_state_vec}_trial_{len(coeff)}.h5'
+            write_wavefunction((coeff, occas, occbs),
+                               os.path.join(file_path, self.trial_name))
 
-        n_alpha = len(occas[0])
-        n_beta = len(occbs[0])
-        with h5py.File(
-                os.path.join(file_path, self.trial_name),
-                'a') as fh5:
-            fh5['active_electrons'] = num_active_electrons
-            fh5['active_orbitals'] = num_active_orbitals
-            fh5['nelec'] = (n_alpha, n_beta)
+            n_alpha = len(occas[0])
+            n_beta = len(occbs[0])
+            with h5py.File(
+                    os.path.join(file_path, self.trial_name),
+                    'a') as fh5:
+                fh5['active_electrons'] = num_active_electrons
+                fh5['active_orbitals'] = num_active_orbitals
+                fh5['nelec'] = (n_alpha, n_beta)
+        else:
+            hcore = self.scf_data["hcore"]
+            ortho_ao_mat = self.scf_data["X"]
+            mo_coeffs = self.scf_data["mo_coeff"]
+            mo_occ = self.scf_data["mo_occ"]
+
+            nelec = (self.mol_nelec[0] - self.num_frozen_core, self.mol_nelec[1] - self.num_frozen_core)
+            if self.ortho_ao:
+                basis_change_matrix = ortho_ao_mat
+            else:
+                basis_change_matrix = mo_coeffs
+
+            wfn = generate_wavefunction_from_mo_coeff(
+                mo_coeffs,
+                mo_occ,
+                basis_change_matrix,
+                nelec,
+                ortho_ao=self.ortho_ao,
+                num_frozen_core=self.num_frozen_core,
+            )
+            self.trial_name = f'sd_trial.h5'
+            write_wavefunction(wfn, os.path.join(file_path, self.trial_name))
 
     def gen_hamiltonian(self,
                         verbose: bool = True,
-                        ortho_ao: bool = False,
-                        num_frozen_core: int = 0,
-                        generate_ham: bool = True
                         ) -> None:
         """
         adapted function gen_ipie_input_from_pyscf_chk from ipie/utils/from_pyscf.py
@@ -182,11 +207,14 @@ class IpieInput(object):
         scf_data = self.scf_data
         mol = self.mol
         chol_cut = self.chol_cut
+        ortho_ao = self.ortho_ao
         hamil_file = self.chol_hamil_file
         hcore = scf_data["hcore"]
         ortho_ao_mat = scf_data["X"]
         mo_coeffs = scf_data["mo_coeff"]
         mo_occ = scf_data["mo_occ"]
+        num_frozen_core = self.num_frozen_core
+
         if ortho_ao:
             basis_change_matrix = ortho_ao_mat
         else:
