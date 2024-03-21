@@ -93,7 +93,6 @@ class IpieInput(object):
         self.chol_cut = options.get("chol_cut", 1e-5)
         self.chol_hamil_file = options.get("chol_hamil_file", "hamiltonian.h5")
         self.generate_chol_hamiltonian = options.get("generate_chol_hamiltonian", 0)
-        os.makedirs(self.str_date, exist_ok=True)
 
         self.n_qubits = 2 * self.num_active_orbitals
 
@@ -114,6 +113,16 @@ class IpieInput(object):
         print("# (nalpha, nbeta)=", self.mol_nelec)
 
         self.trial_name = ""
+
+        if len(self.str_date) == 0:
+            self.str_date = self.str_date_0
+        else:
+            self.str_date = self.str_date + "_" + self.str_date_0
+
+        os.makedirs(self.str_date, exist_ok=True)
+
+        with open(os.path.join(self.str_date, sys.argv[1]), 'w') as f:
+            json.dump(options, f, ensure_ascii=False, indent=4)
 
     def gen_wave_function(self):
         """
@@ -137,9 +146,9 @@ class IpieInput(object):
         spin_sq_value = final_state_vector.conj().T @ spin_s_square @ final_state_vector
         spin_proj = final_state_vector.conj().T @ spin_s_z @ final_state_vector
 
-        print("spin_sq_value", spin_sq_value)
-        print("spin_proj", spin_proj)
-        print("ncore_electrons", ncore_electrons)
+        print("# spin_sq_value", spin_sq_value)
+        print("# spin_proj", spin_proj)
+        print("# ncore_electrons", ncore_electrons)
 
         coeff, occas, occbs = get_coeff_wf(final_state_vector, ncore_electrons)
         coeff = np.array(coeff, dtype=complex)
@@ -148,14 +157,14 @@ class IpieInput(object):
         occas = np.array(occas)[ixs]
         occbs = np.array(occbs)[ixs]
 
-        self.trial_name = f'trial_{len(coeff)}.h5'
+        self.trial_name = f'{filen_state_vec}_trial_{len(coeff)}.h5'
         write_wavefunction((coeff, occas, occbs),
-                           os.path.join(file_path, f'trial_{len(coeff)}.h5'))
+                           os.path.join(file_path, self.trial_name))
 
         n_alpha = len(occas[0])
         n_beta = len(occbs[0])
         with h5py.File(
-                f"{file_path}/trial_{len(coeff)}.h5",
+                os.path.join(file_path, self.trial_name),
                 'a') as fh5:
             fh5['active_electrons'] = num_active_electrons
             fh5['active_orbitals'] = num_active_orbitals
