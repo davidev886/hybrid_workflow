@@ -124,11 +124,9 @@ if __name__ == "__main__":
                   "wicks": False,
                   "optimized": True,
                   "use_wicks_helper": True,
-                  'ndets': 10,
+                  'ndets': input_ipie.ndets,
                   "compute_trial_energy": True
                   },
-        "estimators": {"filename": os.path.join(input_ipie.output_dir,
-                                                f"results_measurements.h5")},
     }
 
     afqmc_msd, comm = setup_calculation(input_options)
@@ -140,5 +138,3 @@ if __name__ == "__main__":
     afqmc_msd.run(additional_estimators=estimators,
                   estimator_filename=os.path.join(input_ipie.output_dir, "estimator.0.h5"))
     afqmc_msd.finalise(verbose=True)
-
-

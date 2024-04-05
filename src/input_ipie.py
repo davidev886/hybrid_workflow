@@ -114,7 +114,7 @@ class IpieInput(object):
         print("# (nalpha, nbeta)=", self.mol_nelec)
 
         self.trial_name = ""
-
+        self.ndets = 0
         str_date = datetime.today().strftime('%Y%m%d_%H%M%S')
 
         if len(self.output_dir) == 0:
@@ -162,6 +162,7 @@ class IpieInput(object):
             coeff = coeff[ixs]
             occas = np.array(occas)[ixs]
             occbs = np.array(occbs)[ixs]
+            self.ndets = np.size(coeff)
 
             bare_filen_state_vec = os.path.splitext(os.path.basename(filen_state_vec))[0]
             self.trial_name = f'{bare_filen_state_vec}_msd_trial_{len(coeff)}.h5'
