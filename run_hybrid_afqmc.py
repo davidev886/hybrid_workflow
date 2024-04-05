@@ -8,6 +8,7 @@ from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
 from src.input_ipie import IpieInput
+from src.s2_estimator import S2Mixed
 
 
 def main():
@@ -23,7 +24,8 @@ def main():
     input_ipie.gen_wave_function()
 
     input_ipie.check_energy_state()
-    with h5py.File(os.path.join(input_ipie.file_path, input_ipie.chol_hamil_file)) as fa:
+
+    with h5py.File(os.path.join(input_ipie.ipie_input_dir, input_ipie.chol_hamil_file)) as fa:
         chol = fa["LXmn"][()]
         h1e = fa["hcore"][()]
         e0 = fa["e0"][()]
@@ -39,7 +41,7 @@ def main():
     )
 
     # Build trial wavefunction
-    with h5py.File(os.path.join(input_ipie.file_path, input_ipie.trial_name), "r") as fh5:
+    with h5py.File(os.path.join(input_ipie.ipie_input_dir, input_ipie.trial_name), "r") as fh5:
         coeff = fh5["ci_coeffs"][:]
         occa = fh5["occ_alpha"][:]
         occb = fh5["occ_beta"][:]
@@ -70,9 +72,19 @@ def main():
         verbose=True,
     )
 
-    afqmc_msd.run()
+    estimators = {"S2": S2Mixed(ham=afqmc_msd.hamiltonian)}
+    afqmc_msd.run(additional_estimators=estimators,
+                  estimator_filename=os.path.join(input_ipie.output_dir, "S2_data.dat"))
     afqmc_msd.finalise(verbose=True)
+
+    # We can extract the qmc data as as a pandas data frame like so
+    from ipie.analysis.extraction import extract_observable
+
+    # Note the 'energy' estimator is always computed.
+    qmc_data = extract_observable(afqmc_msd.estimators.filename, "S2")
+    print(qmc_data)
 
 
 if __name__ == "__main__":
     main()
+

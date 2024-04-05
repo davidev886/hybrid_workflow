@@ -58,7 +58,6 @@ def get_coeff_wf(final_state_vector, ncore_electrons=None, thres=1e-6):
             coeff.append(final_state_vector[k])
             occas.append(alpha_occ)
             occbs.append(beta_occ)
-            print(len(alpha_occ), len(beta_occ), alpha_occ, beta_occ)
     # We need it non_normal ordered
     for i in range(len(coeff)):
         coeff[i] = (-1) ** (
@@ -90,17 +89,15 @@ class IpieInput(object):
         self.end_layer = options.get("end_layer", 10)
         self.init_params = options.get("init_params", None)
         self.filen_state_vec = options.get("file_wavefunction", None)
-        self.str_date_0 = datetime.today().strftime('%Y%m%d_%H%M%S')
-        self.str_date = options.get("data_dir", "")
+        self.output_dir = options.get("output_dir", "")
         self.mcscf = options.get("mcscf", 1)
         self.chol_cut = options.get("chol_cut", 1e-5)
         self.chol_hamil_file = options.get("chol_hamil_file", "hamiltonian.h5")
         self.generate_chol_hamiltonian = options.get("generate_chol_hamiltonian", 0)
         self.ortho_ao = options.get("ortho_ao", 0)
         self.n_qubits = 2 * self.num_active_orbitals
-        self.num_frozen_core =  options.get("num_frozen_core", 0)
-
-        self.file_path = self.str_date
+        self.num_frozen_core = options.get("num_frozen_core", 0)
+        self.ipie_input_dir = options.get("ipie_input_dir", "./")
 
         self.ncore_electrons = options.get("ncore_electrons", 0)
 
@@ -118,14 +115,17 @@ class IpieInput(object):
 
         self.trial_name = ""
 
-        if len(self.str_date) == 0:
-            self.str_date = self.str_date_0
+        str_date = datetime.today().strftime('%Y%m%d_%H%M%S')
+
+        if len(self.output_dir) == 0:
+            self.output_dir = str_date
         else:
-            self.str_date = self.str_date + "_" + self.str_date_0
+            self.output_dir = self.output_dir + "_" + str_date
 
-        os.makedirs(self.str_date, exist_ok=True)
+        os.makedirs(self.output_dir, exist_ok=True)
 
-        with open(os.path.join(self.str_date, sys.argv[1]), 'w') as f:
+        os.makedirs(self.ipie_input_dir, exist_ok=True)
+        with open(os.path.join(self.output_dir, sys.argv[1]), 'w') as f:
             json.dump(options, f, ensure_ascii=False, indent=4)
 
     def gen_wave_function(self):
@@ -136,7 +136,7 @@ class IpieInput(object):
         num_active_orbitals = self.num_active_orbitals
         num_active_electrons = self.num_active_electrons
         filen_state_vec = self.filen_state_vec
-        file_path = self.file_path
+        file_path = self.ipie_input_dir
         ncore_electrons = self.ncore_electrons
         if self.mcscf:
             spin_s_square = get_sparse_operator(s_squared_operator(num_active_orbitals))
@@ -163,7 +163,8 @@ class IpieInput(object):
             occas = np.array(occas)[ixs]
             occbs = np.array(occbs)[ixs]
 
-            self.trial_name = f'{filen_state_vec}_trial_{len(coeff)}.h5'
+            bare_filen_state_vec = os.path.splitext(os.path.basename(filen_state_vec))[0]
+            self.trial_name = f'{bare_filen_state_vec}_msd_trial_{len(coeff)}.h5'
             write_wavefunction((coeff, occas, occbs),
                                os.path.join(file_path, self.trial_name))
 
@@ -195,8 +196,10 @@ class IpieInput(object):
                 ortho_ao=self.ortho_ao,
                 num_frozen_core=self.num_frozen_core,
             )
-            self.trial_name = f'sd_trial.h5'
-            write_wavefunction(wfn, os.path.join(file_path, self.trial_name))
+            bare_filen_state_vec = os.path.splitext(os.path.basename(filen_state_vec))[0]
+            self.trial_name = f'{bare_filen_state_vec}_sd_trial.h5'
+
+            write_wavefunction(wfn, filename=os.path.join(file_path, self.trial_name))
 
     def gen_hamiltonian(self,
                         verbose: bool = True,
@@ -204,11 +207,12 @@ class IpieInput(object):
         """
         adapted function gen_ipie_input_from_pyscf_chk from ipie/utils/from_pyscf.py
         """
+        file_path = str(self.ipie_input_dir)
         scf_data = self.scf_data
         mol = self.mol
         chol_cut = self.chol_cut
         ortho_ao = self.ortho_ao
-        hamil_file = self.chol_hamil_file
+        hamil_file_name = self.chol_hamil_file
         hcore = scf_data["hcore"]
         ortho_ao_mat = scf_data["X"]
         mo_coeffs = scf_data["mo_coeff"]
@@ -239,7 +243,7 @@ class IpieInput(object):
         write_hamiltonian(ham.H1[0],
                           copy_LPX_to_LXmn(ham.chol),
                           ham.ecore,
-                          filename=os.path.join(self.file_path, hamil_file)
+                          filename=os.path.join(file_path, hamil_file_name)
                           )
 
     def check_energy_state(self):
