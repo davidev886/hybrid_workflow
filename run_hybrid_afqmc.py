@@ -9,6 +9,7 @@ from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
 from src.input_ipie import IpieInput
 from src.s2_estimator import S2Mixed
+from ipie.qmc.calc import setup_calculation
 
 
 def main():
@@ -86,5 +87,58 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    np.set_printoptions(precision=6, suppress=True, linewidth=10000)
+    options_file = sys.argv[1]
+    with open(options_file) as f:
+        options = json.load(f)
+
+    input_ipie = IpieInput(options)
+
+    if input_ipie.generate_chol_hamiltonian:
+        input_ipie.gen_hamiltonian()
+    input_ipie.gen_wave_function()
+
+    nwalkers = 10
+    nsteps = 4
+    nblocks = 2
+    seed = 96264512
+    input_options = {
+        "system": {
+            "nup": input_ipie.n_alpha,
+            "ndown": input_ipie.n_beta,
+        },
+        "hamiltonian": {"name": "Generic",
+                        "integrals": os.path.join(input_ipie.ipie_input_dir,
+                                                  input_ipie.chol_hamil_file),
+                        },
+        "qmc": {
+            "dt": 0.005,
+            "nsteps": nsteps,
+            "nwalkers": nwalkers,
+            "blocks": nblocks,
+            "batched": True,
+            "rng_seed": seed,
+        },
+        "trial": {"filename": os.path.join(input_ipie.ipie_input_dir,
+                                           input_ipie.trial_name),
+                  "wicks": False,
+                  "optimized": True,
+                  "use_wicks_helper": True,
+                  'ndets': 10,
+                  "compute_trial_energy": True
+                  },
+        "estimators": {"filename": os.path.join(input_ipie.output_dir,
+                                                f"results_measurements.h5")},
+    }
+
+    afqmc_msd, comm = setup_calculation(input_options)
+    afqmc_msd.trial.calculate_energy(afqmc_msd.system, afqmc_msd.hamiltonian)
+    afqmc_msd.trial.e1b = comm.bcast(afqmc_msd.trial.e1b, root=0)
+    afqmc_msd.trial.e2b = comm.bcast(afqmc_msd.trial.e2b, root=0)
+
+    estimators = {"S2": S2Mixed(ham=afqmc_msd.hamiltonian)}
+    afqmc_msd.run(additional_estimators=estimators,
+                  estimator_filename=os.path.join(input_ipie.output_dir, "estimator.0.h5"))
+    afqmc_msd.finalise(verbose=True)
+
 
