@@ -98,9 +98,9 @@ if __name__ == "__main__":
         input_ipie.gen_hamiltonian()
     input_ipie.gen_wave_function()
 
-    nwalkers = 10
-    nsteps = 4
-    nblocks = 2
+    nwalkers = options.get("nwalkers", 25)
+    nsteps = options.get("nsteps", 10)
+    nblocks = options.get("nblocks", 10)
     seed = 96264512
     input_options = {
         "system": {
