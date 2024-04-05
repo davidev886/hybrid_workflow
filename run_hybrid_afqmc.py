@@ -97,6 +97,8 @@ if __name__ == "__main__":
     if input_ipie.generate_chol_hamiltonian:
         input_ipie.gen_hamiltonian()
     input_ipie.gen_wave_function()
+    input_ipie.ncore_electrons = 2345
+    n_alpha, n_beta = input_ipie.mol_nelec
 
     nwalkers = options.get("nwalkers", 25)
     nsteps = options.get("nsteps", 10)
@@ -104,8 +106,8 @@ if __name__ == "__main__":
     seed = 96264512
     input_options = {
         "system": {
-            "nup": input_ipie.n_alpha,
-            "ndown": input_ipie.n_beta,
+            "nup": n_alpha,
+            "ndown": n_beta,
         },
         "hamiltonian": {"name": "Generic",
                         "integrals": os.path.join(input_ipie.ipie_input_dir,

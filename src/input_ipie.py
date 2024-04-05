@@ -99,10 +99,7 @@ class IpieInput(object):
         self.num_frozen_core = options.get("num_frozen_core", 0)
         self.ipie_input_dir = options.get("ipie_input_dir", "./")
 
-        self.ncore_electrons = options.get("ncore_electrons", 0)
-
-        self.n_alpha = int((self.num_active_electrons + self.spin) / 2)
-        self.n_beta = int((self.num_active_electrons - self.spin) / 2)
+        # self.ncore_electrons = options.get("ncore_electrons", 0)
 
         pyscf_chkfile = self.chkptfile_rohf
         if self.mcscf:
@@ -111,8 +108,12 @@ class IpieInput(object):
             self.scf_data = load_from_pyscf_chkfile(pyscf_chkfile)
         self.mol = self.scf_data["mol"]
         self.mol_nelec = self.mol.nelec
-        print("# (nalpha, nbeta)=", self.mol_nelec)
 
+        self.n_alpha = int((self.num_active_electrons + self.spin) / 2)
+        self.n_beta = int((self.num_active_electrons - self.spin) / 2)
+        self.ncore_electrons = (sum(self.mol_nelec) - (self.n_alpha + self.n_beta)) // 2
+        print("# (nalpha, nbeta)_active =", self.mol_nelec)
+        print("# ncore_electrons", self.ncore_electrons)
         self.trial_name = ""
         self.ndets = 0
         str_date = datetime.today().strftime('%Y%m%d_%H%M%S')
@@ -154,7 +155,7 @@ class IpieInput(object):
 
             print("# spin_sq_value", spin_sq_value)
             print("# spin_proj", spin_proj)
-            print("# ncore_electrons", ncore_electrons)
+
 
             coeff, occas, occbs = get_coeff_wf(final_state_vector, ncore_electrons)
             coeff = np.array(coeff, dtype=complex)
