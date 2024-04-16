@@ -101,6 +101,7 @@ class IpieInput(object):
         self.num_frozen_core = options.get("num_frozen_core", 0)
         self.ipie_input_dir = options.get("ipie_input_dir", "./")
         self.check_energy_openfermion = options.get("check_energy_openfermion", 0)
+        self.threshold_wf = options.get("threshold_wf", 1e-6)
         # self.ncore_electrons = options.get("ncore_electrons", 0)
 
         pyscf_chkfile = self.chkptfile_rohf
@@ -169,7 +170,8 @@ class IpieInput(object):
             print("# ncore_electrons", ncore_electrons)
             coeff, occas, occbs = get_coeff_wf(final_state_vector,
                                                (self.n_alpha, self.n_beta),
-                                               ncore_electrons)
+                                               ncore_electrons,
+                                               thres=self.threshold_wf)
 
             coeff = np.array(coeff, dtype=complex)
             ixs = np.argsort(np.abs(coeff))[::-1]
