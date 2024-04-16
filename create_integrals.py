@@ -7,7 +7,7 @@ from pyscf import gto, scf, fci, ao2mo, mcscf, lib
 from pyscf.lib import chkfile
 from pyscf.scf.chkfile import dump_scf
 from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
-
+import shutil
 from openfermion.transforms import jordan_wigner
 from openfermion import generate_hamiltonian
 from openfermion.linalg import get_sparse_operator
@@ -108,9 +108,10 @@ if __name__ == "__main__":
                                  tol=0,
                                  return_strs=False)
         )
+        wf_fname = f"{label_molecule}_s_{spin}_{basis.lower()}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
+        shutil.copy(chkptfile_cas, os.path.join(ipie_input_dir, wf_fname))
 
-        wf_fname = f"{label_molecule}_s_{spin}_{basis.lower()}_{num_active_electrons}e_{num_active_orbitals}o_wf.h5"
-        with h5py.File(os.path.join(ipie_input_dir, wf_fname), "w") as fh5:
+        with h5py.File(os.path.join(ipie_input_dir, wf_fname), "r+") as fh5:
             fh5["mcscf/ci_coeffs"] = coeff
             fh5["mcscf/occs_alpha"] = occa
             fh5["mcscf/occs_beta"] = occb
