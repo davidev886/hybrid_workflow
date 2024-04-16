@@ -281,3 +281,39 @@ class IpieInput(object):
         print(f"# Energy of the trial {self.filen_state_vec} is ", energy)
 
         return energy
+
+
+def write_json_input_file():
+    """
+        write basic input json
+    """
+    basic = {
+        "num_active_orbitals": 5,
+        "num_active_electrons": 5,
+        "hamiltonian_fname": "ham/FeNTA_s_1_cc-pvtz_5e_5o/ham_FeNTA_cc-pvtz_5e_5o.pickle",
+        "spin": 1,
+        "chkptfile_cas": "FeNTA_spin_1/basis_cc-pVTZ/CAS_5_5/mcscf.chk",
+        "chkptfile_rohf": "FeNTA_spin_1/basis_cc-pVTZ/ROHF/scfref.chk",
+        "basis": "cc-pVTZ",
+        "atom": "FeNTA_spin_1/geo.xyz",
+        "dmrg": 0,
+        "dmrg_states": 200,
+        "target": "",
+        "optimizer_type": "scipy",
+        "output_dir": "./files_afqmc",
+        "file_wavefunction": "wf_6_+0.7500_+0.4998.dat",
+        "ncore_electrons": 0,
+        "generate_chol_hamiltonian": 1,
+        "chol_cut": 1e-0,
+        "dir_integral": "ham/FeNTA_s_1_cc-pvtz_5e_5o",
+        "ipie_input_dir": "./ipie_fenta_input",
+        "nwalkers": 10,
+        "nsteps": 10,
+        "nblocks": 10
+    }
+    with open("input_filename.json", "w") as f:
+        f.write(json.dumps(basic, indent=4, separators=(",", ": ")))
+
+
+
+

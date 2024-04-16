@@ -86,10 +86,11 @@ def main():
     print(qmc_data)
 
 
-if __name__ == "__main__":
-    main()
-
-if __name__ == "__main__2":
+def afqmc_with_drive():
+    """
+        Run the afqmc with input file from command line.
+        Use write_json_input_file from src.input_ipie to generate a sample input file
+    """
     np.set_printoptions(precision=6, suppress=True, linewidth=10000)
     options_file = sys.argv[1]
     with open(options_file) as f:
@@ -143,3 +144,7 @@ if __name__ == "__main__2":
     afqmc_msd.run(additional_estimators=estimators,
                   estimator_filename=os.path.join(input_ipie.output_dir, "estimator.0.h5"))
     afqmc_msd.finalise(verbose=True)
+
+
+if __name__ == "__main__":
+    afqmc_with_drive()
