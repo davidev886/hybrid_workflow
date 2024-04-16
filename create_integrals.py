@@ -81,6 +81,8 @@ if __name__ == "__main__":
         mf.kernel()
 
     my_casci = mcscf.CASCI(mf, num_active_orbitals, num_active_electrons)
+    nocca_act = (num_active_electrons + spin) // 2
+    noccb_act = (num_active_electrons - spin) // 2
     if dmrg in (1, 'true'):
         from pyscf import dmrgscf
         dir_path = f"{label_molecule}_s_{spin}_{basis.lower()}_{num_active_electrons}e_{num_active_orbitals}o/dmrg_M_{dmrg_states}"
@@ -104,7 +106,7 @@ if __name__ == "__main__":
         coeff, occa, occb = zip(
             *fci.addons.large_ci(fcivec,
                                  num_active_orbitals,
-                                 (nocca, noccb),
+                                 (nocca_act, noccb_act),
                                  tol=0,
                                  return_strs=False)
         )
