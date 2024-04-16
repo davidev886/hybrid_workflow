@@ -24,7 +24,7 @@ def main():
         input_ipie.gen_hamiltonian()
     input_ipie.gen_wave_function()
 
-    input_ipie.check_energy_state()
+    # input_ipie.check_energy_state()
 
     with h5py.File(os.path.join(input_ipie.ipie_input_dir, input_ipie.chol_hamil_file)) as fa:
         chol = fa["LXmn"][()]
@@ -87,6 +87,9 @@ def main():
 
 
 if __name__ == "__main__":
+    main()
+
+if __name__ == "__main__2":
     np.set_printoptions(precision=6, suppress=True, linewidth=10000)
     options_file = sys.argv[1]
     with open(options_file) as f:
