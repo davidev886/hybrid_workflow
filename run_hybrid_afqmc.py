@@ -100,7 +100,7 @@ if __name__ == "__main__2":
     if input_ipie.generate_chol_hamiltonian:
         input_ipie.gen_hamiltonian()
     input_ipie.gen_wave_function()
-    input_ipie.ncore_electrons = 2345
+
     n_alpha, n_beta = input_ipie.mol_nelec
 
     nwalkers = options.get("nwalkers", 25)
