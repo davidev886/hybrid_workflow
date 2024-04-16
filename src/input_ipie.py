@@ -100,7 +100,7 @@ class IpieInput(object):
         self.n_qubits = 2 * self.num_active_orbitals
         self.num_frozen_core = options.get("num_frozen_core", 0)
         self.ipie_input_dir = options.get("ipie_input_dir", "./")
-
+        self.check_energy_openfermion = options.get("check_energy_openfermion", 0)
         # self.ncore_electrons = options.get("ncore_electrons", 0)
 
         pyscf_chkfile = self.chkptfile_rohf
@@ -147,7 +147,7 @@ class IpieInput(object):
             spin_s_z = of_spin_operator("projected", 2 * num_active_orbitals)
 
             final_state_vector = np.loadtxt(filen_state_vec, dtype=complex, comments="#")
-            # final_state_vector = convert_state_big_endian(final_state_vector)
+            final_state_vector = convert_state_big_endian(final_state_vector)
 
             normalization = np.sqrt(np.dot(final_state_vector.T.conj(), final_state_vector)).real
 
@@ -155,15 +155,14 @@ class IpieInput(object):
 
             spin_sq_value = final_state_vector.conj().T @ spin_s_square @ final_state_vector
             spin_proj = final_state_vector.conj().T @ spin_s_z @ final_state_vector
+            if self.check_energy_openfermion:
+                filehandler_ham = open(self.hamiltonian_fname, 'rb')
+                jw_hamiltonian = pickle.load(filehandler_ham)
 
-            #filehandler = open("ham/FeNTA_s_1_cc-pvtz_5e_5o/ham_FeNTA_cc-pvtz_5e_5o.pickle", 'rb')
-            filehandler = open("h2_s_0_cc-pvtz_2e_4o/ham_h2_cc-pvtz_2e_4o.pickle", 'rb')
-            jw_hamiltonian = pickle.load(filehandler)
+                jw_hamiltonian_sparse = get_sparse_operator(jw_hamiltonian, 2 * self.num_active_orbitals)
 
-            sparse_ham = get_sparse_operator(jw_hamiltonian, 2 * num_active_orbitals)
-
-            energy = final_state_vector.conj().T @ sparse_ham @ final_state_vector
-            print(f"# energy wf {filen_state_vec}: {energy}")
+                energy = final_state_vector.conj().T @ jw_hamiltonian_sparse @ final_state_vector
+                print(f"# Energy of the trial {self.filen_state_vec} is ", energy)
 
             print("# spin_sq_value", spin_sq_value)
             print("# spin_proj", spin_proj)
