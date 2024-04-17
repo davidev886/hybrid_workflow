@@ -5,24 +5,12 @@ import json
 from pyscf import gto, scf, fci, mcscf, lib
 from pyscf.lib import chkfile
 import shutil
-
 import h5py
 from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
 from from_pyscf_mod import gen_ipie_input_from_pyscf_chk_mod
-
-
-def molecule_data(atom_name):
-    # table B1 angstrom
-    molecules = {'ozone': [('O', (0.0000000, 0.0000000, 0.0000000)),
-                           ('O', (0.0000000, 0.0000000, 1.2717000)),
-                           ('O', (1.1383850, 0.0000000, 1.8385340))],
-                 'H2': [('H', (0.0000000, 0.0000000, 0.0000000)),
-                        ('H', (0.0000000, 0.0000000, 1.2717000))]}
-
-    return molecules[atom_name]
 
 
 if __name__ == "__main__":
@@ -35,11 +23,11 @@ if __name__ == "__main__":
     with open(sys.argv[1]) as f:
         options = json.load(f)
 
-    target = options.get("target", "nvidia")
     num_active_orbitals = options.get("num_active_orbitals", 5)
     num_active_electrons = options.get("num_active_electrons", 5)
     chkptfile_rohf = options.get("chkptfile_rohf", None)
     chkptfile_cas = options.get("chkptfile_cas", None)
+    # ipie_input_dir contains the hamiltonian.h5 and wavefunction.h5 for running ipie
     ipie_input_dir = options.get("ipie_input_dir", "./")
     basis = options.get("basis", 'cc-pVTZ').lower()
     atom = options.get("atom", 'geo.xyz')
@@ -47,15 +35,14 @@ if __name__ == "__main__":
     dmrg_states = options.get("dmrg_states", 1000)
     spin = options.get("spin", 1)
     label_molecule = options.get("label_molecule", "FeNTA")
-    hamiltonian_fname = f"ham_{label_molecule}_{basis.lower()}_{num_active_electrons}e_{num_active_orbitals}o.pickle"
+    dmrg_thread = options.get("dmrg_thread", 2)
+    threshold_wf = options.get("threshold_wf", 1e-6)
+    generate_chol_hamiltonian = bool(options.get("generate_chol_hamiltonian", 1))
+    hamiltonian_fname = f"ham_{label_molecule}_{basis}_{num_active_electrons}e_{num_active_orbitals}o.pickle"
 
-    print(hamiltonian_fname)
     os.makedirs(ipie_input_dir, exist_ok=True)
     multiplicity = spin + 1
     charge = 0
-
-    if label_molecule.lower() in ("h2", "hydrogen"):
-        atom = molecule_data("H2")
 
     mol = gto.M(
         atom=atom,
@@ -80,21 +67,19 @@ if __name__ == "__main__":
     noccb_act = (num_active_electrons - spin) // 2
     if dmrg in (1, 'true'):
         from pyscf import dmrgscf
-        dir_path = (f"{label_molecule}_s_{spin}_{basis.lower()}_{num_active_electrons}e_{num_active_orbitals}o/"
-                    f"dmrg_M_{dmrg_states}")
+        # dir_path = (f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o/"
+        #             f"dmrg_M_{dmrg_states}")
         my_casci.fcisolver = dmrgscf.DMRGCI(mol, maxM=dmrg_states, tol=1E-10)
         my_casci.fcisolver.runtimeDir = os.path.abspath(lib.param.TMPDIR)
         my_casci.fcisolver.scratchDirectory = os.path.abspath(lib.param.TMPDIR)
-        # my_casci.fcisolver.threads = 8
+        my_casci.fcisolver.threads = dmrg_thread
         my_casci.fcisolver.memory = int(mol.max_memory / 1000)  # mem in GB
         my_casci.fcisolver.conv_tol = 1e-14
     else:
-        dir_path = f"{label_molecule}_s_{spin}_{basis.lower()}_{num_active_electrons}e_{num_active_orbitals}o"
+        # dir_path = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o"
         x = (mol.spin / 2 * (mol.spin / 2 + 1))
-        print(f"x={x}")
+        print(f"fix spin squared to x={x}")
         my_casci.fix_spin_(ss=x)
-
-    os.makedirs(dir_path, exist_ok=True)
 
     if chkptfile_cas and os.path.exists(chkptfile_cas):
         mo = chkfile.load(chkptfile_cas, 'mcscf/mo_coeff')
@@ -106,19 +91,19 @@ if __name__ == "__main__":
         *fci.addons.large_ci(fcivec,
                              num_active_orbitals,
                              (nocca_act, noccb_act),
-                             tol=0,
+                             tol=threshold_wf,
                              return_strs=False)
     )
-    chk_fname = f"{label_molecule}_s_{spin}_{basis.lower()}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
-    ham_file = f"{label_molecule}_s_{spin}_{basis.lower()}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
-    wfn_file = f"{label_molecule}_s_{spin}_{basis.lower()}_{num_active_electrons}e_{num_active_orbitals}o_wfn.h5"
-    shutil.copy(chkptfile_cas, os.path.join(ipie_input_dir, chk_fname))
+    chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
+    ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
+    wfn_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_wfn.h5"
 
+    # make a copy of the chk file from pyscf and append the info on the MSD trial
+    shutil.copy(chkptfile_cas, os.path.join(ipie_input_dir, chk_fname))
     with h5py.File(os.path.join(ipie_input_dir, chk_fname), "r+") as fh5:
         fh5["mcscf/ci_coeffs"] = coeff
         fh5["mcscf/occs_alpha"] = occa
         fh5["mcscf/occs_beta"] = occb
-    print(coeff)
 
     print('FCI Energy in CAS:', e_tot)
 
@@ -126,7 +111,7 @@ if __name__ == "__main__":
                                       hamil_file=os.path.join(ipie_input_dir, ham_file),
                                       wfn_file=os.path.join(ipie_input_dir, wfn_file),
                                       mcscf=True,
-                                      gen_ham=False)
+                                      gen_ham=generate_chol_hamiltonian)
 
     with h5py.File(os.path.join(ipie_input_dir, ham_file)) as fa:
         chol = fa["LXmn"][()]
