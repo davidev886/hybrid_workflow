@@ -126,12 +126,13 @@ class IpieInput(object):
             self.output_dir = str_date
         else:
             self.output_dir = self.output_dir + "_" + str_date
-
+        print(f"# using folder {self.output_dir} for afqmc input files and estimators")
         os.makedirs(self.output_dir, exist_ok=True)
-
-        os.makedirs(self.ipie_input_dir, exist_ok=True)
         with open(os.path.join(self.output_dir, sys.argv[1]), 'w') as f:
             json.dump(options, f, ensure_ascii=False, indent=4)
+
+        print(f"# using folder {self.ipie_input_dir} for afqmc hamiltonian.h5 and wavefunction.h5")
+        os.makedirs(self.ipie_input_dir, exist_ok=True)
 
     def gen_wave_function(self):
         """
