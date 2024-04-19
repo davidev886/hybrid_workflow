@@ -94,48 +94,52 @@ def afqmc_with_drive():
     comm = MPI.COMM_WORLD
     np.set_printoptions(precision=6, suppress=True, linewidth=10000)
     options_file = sys.argv[1]
-    with open(options_file) as f:
-        options = json.load(f)
+    if comm.rank == 0:
+        with open(options_file) as f:
+            options = json.load(f)
 
-    input_ipie = IpieInput(options)
+        input_ipie = IpieInput(options)
 
-    if input_ipie.generate_chol_hamiltonian:
-        input_ipie.gen_hamiltonian()
-    input_ipie.gen_wave_function()
+        if input_ipie.generate_chol_hamiltonian:
+            input_ipie.gen_hamiltonian()
+        input_ipie.gen_wave_function()
 
-    n_alpha, n_beta = input_ipie.mol_nelec
+        n_alpha, n_beta = input_ipie.mol_nelec
 
-    nwalkers = options.get("nwalkers", 25)
-    nsteps = options.get("nsteps", 10)
-    nblocks = options.get("nblocks", 10)
-    seed = 96264512
-    input_options = {
-        "system": {
-            "nup": n_alpha,
-            "ndown": n_beta,
-        },
-        "hamiltonian": {"name": "Generic",
-                        "integrals": os.path.join(input_ipie.ipie_input_dir,
-                                                  input_ipie.chol_hamil_file),
-                        },
-        "qmc": {
-            "dt": 0.005,
-            "nsteps": nsteps,
-            "nwalkers": nwalkers,
-            "blocks": nblocks,
-            "batched": True,
-            "rng_seed": seed,
-        },
-        "trial": {"filename": os.path.join(input_ipie.ipie_input_dir,
-                                           input_ipie.trial_name),
-                  "wicks": False,
-                  "optimized": True,
-                  "use_wicks_helper": True,
-                  'ndets': input_ipie.ndets,
-                  "compute_trial_energy": True
-                  },
-        "verbosity": 3
-    }
+        nwalkers = options.get("nwalkers", 25)
+        nsteps = options.get("nsteps", 10)
+        nblocks = options.get("nblocks", 10)
+        seed = 96264512
+        input_options = {
+            "system": {
+                "nup": n_alpha,
+                "ndown": n_beta,
+            },
+            "hamiltonian": {"name": "Generic",
+                            "integrals": os.path.join(input_ipie.ipie_input_dir,
+                                                      input_ipie.chol_hamil_file),
+                            },
+            "qmc": {
+                "dt": 0.005,
+                "nsteps": nsteps,
+                "nwalkers": nwalkers,
+                "blocks": nblocks,
+                "batched": True,
+                "rng_seed": seed,
+            },
+            "trial": {"filename": os.path.join(input_ipie.ipie_input_dir,
+                                               input_ipie.trial_name),
+                      "wicks": False,
+                      "optimized": True,
+                      "use_wicks_helper": True,
+                      'ndets': input_ipie.ndets,
+                      "compute_trial_energy": True
+                      },
+            "verbosity": 3
+        }
+    else:
+        options = None
+    input_options = comm.bcast(options, root=0)
 
     afqmc_msd, comm = setup_calculation(input_options)
     afqmc_msd.trial.calculate_energy(afqmc_msd.system, afqmc_msd.hamiltonian)
