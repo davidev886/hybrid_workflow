@@ -133,6 +133,7 @@ def afqmc_with_drive():
                   'ndets': input_ipie.ndets,
                   "compute_trial_energy": True
                   },
+        "verbosity": 3
     }
 
     afqmc_msd, comm = setup_calculation(input_options)
