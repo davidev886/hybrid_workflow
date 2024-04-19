@@ -10,7 +10,7 @@ from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
 from src.input_ipie import IpieInput
 from src.s2_estimator import S2Mixed
 from ipie.qmc.calc import setup_calculation
-
+from ipie.config import MPI
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=10000)
@@ -91,6 +91,7 @@ def afqmc_with_drive():
         Run the afqmc with input file from command line.
         Use write_json_input_file from src.input_ipie to generate a sample input file
     """
+    comm = MPI.COMM_WORLD
     np.set_printoptions(precision=6, suppress=True, linewidth=10000)
     options_file = sys.argv[1]
     with open(options_file) as f:
@@ -143,7 +144,8 @@ def afqmc_with_drive():
 
     estimators = {"S2": S2Mixed(ham=afqmc_msd.hamiltonian)}
     afqmc_msd.run(additional_estimators=estimators,
-                  estimator_filename=os.path.join(input_ipie.output_dir, "estimator.0.h5"))
+                  estimator_filename=os.path.join(input_ipie.output_dir, "estimator.0.h5")
+                )
     afqmc_msd.finalise(verbose=True)
 
 
