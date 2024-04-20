@@ -9,7 +9,7 @@ from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
 from src.input_ipie import IpieInput
 from src.s2_estimator import S2Mixed
-from ipie.qmc.calc import setup_calculation
+from ipie.qmc.calc import get_driver
 from ipie.config import MPI
 
 def main():
@@ -135,14 +135,14 @@ def afqmc_with_drive():
                       'ndets': input_ipie.ndets,
                       "compute_trial_energy": True
                       },
-            "verbosity": 3
+            "verbosity": 1
         }
     else:
         input_options = None
         input_ipie = None
     input_options = comm.bcast(input_options, root=0)
     input_ipie = comm.bcast(input_ipie, root=0)
-    afqmc_msd, comm = setup_calculation(input_options)
+    afqmc_msd = get_driver(input_options, comm)
     afqmc_msd.trial.calculate_energy(afqmc_msd.system, afqmc_msd.hamiltonian)
     afqmc_msd.trial.e1b = comm.bcast(afqmc_msd.trial.e1b, root=0)
     afqmc_msd.trial.e2b = comm.bcast(afqmc_msd.trial.e2b, root=0)
