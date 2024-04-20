@@ -139,8 +139,9 @@ def afqmc_with_drive():
         }
     else:
         input_options = None
+        input_ipie = None
     input_options = comm.bcast(input_options, root=0)
-
+    input_ipie = comm.bcast(input_ipie, root=0)
     afqmc_msd, comm = setup_calculation(input_options)
     afqmc_msd.trial.calculate_energy(afqmc_msd.system, afqmc_msd.hamiltonian)
     afqmc_msd.trial.e1b = comm.bcast(afqmc_msd.trial.e1b, root=0)
