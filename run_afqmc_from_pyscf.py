@@ -10,7 +10,7 @@ from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
-from from_pyscf_mod import gen_ipie_input_from_pyscf_chk_mod
+from src.from_pyscf_mod import gen_ipie_input_from_pyscf_chk_mod
 
 
 if __name__ == "__main__":
