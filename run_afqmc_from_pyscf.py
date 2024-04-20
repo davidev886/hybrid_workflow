@@ -38,6 +38,10 @@ if __name__ == "__main__":
     dmrg_thread = options.get("dmrg_thread", 2)
     threshold_wf = options.get("threshold_wf", 1e-6)
     generate_chol_hamiltonian = bool(options.get("generate_chol_hamiltonian", 1))
+    nwalkers = options.get("nwalkers", 25)
+    nsteps = options.get("nsteps", 10)
+    nblocks = options.get("nblocks", 10)
+
     hamiltonian_fname = f"ham_{label_molecule}_{basis}_{num_active_electrons}e_{num_active_orbitals}o.pickle"
 
     os.makedirs(ipie_input_dir, exist_ok=True)
@@ -150,9 +154,9 @@ if __name__ == "__main__":
         mol.nelec,
         ham,
         trial,
-        num_walkers=100,
-        num_steps_per_block=25,
-        num_blocks=10,
+        num_walkers=nwalkers,
+        num_steps_per_block=nsteps,
+        num_blocks=nblocks,
         timestep=0.005,
         stabilize_freq=5,
         seed=96264512,
