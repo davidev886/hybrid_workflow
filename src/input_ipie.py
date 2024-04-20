@@ -33,9 +33,10 @@ def convert_state_big_endian(state_little_endian):
     return state_big_endian
 
 
-def get_coeff_wf(final_state_vector, ncore_electrons=None, thres=1e-6):
+def get_coeff_wf(final_state_vector, n_elec, ncore_electrons=None, thres=1e-6):
     """
     :param final_state_vector: State vector from a VQE simulation
+    :param n_elec: Number of electrons in active space
     :param ncore_electrons: Number of electrons in core space
     :param thres: Threshold for coefficients to keep from VQE wavefunction
     :returns: Input for ipie trial: coefficients, list of occupied alpha, list of occupied bets
@@ -54,7 +55,8 @@ def get_coeff_wf(final_state_vector, ncore_electrons=None, thres=1e-6):
             beta_aux.append(i[2 * j + 1])
         alpha_occ = [i for i, x in enumerate(alpha_aux) if x == '1']
         beta_occ = [i for i, x in enumerate(beta_aux) if x == '1']
-        if np.abs(final_state_vector[k]) >= thres:
+
+        if (np.abs(final_state_vector[k]) >= thres) and (len(alpha_occ) == n_elec[0]) and (len(beta_occ) == n_elec[1]):
             coeff.append(final_state_vector[k])
             occas.append(alpha_occ)
             occbs.append(beta_occ)
@@ -63,7 +65,7 @@ def get_coeff_wf(final_state_vector, ncore_electrons=None, thres=1e-6):
         coeff[i] = (-1) ** (
             normal_ordering_swap([2 * j for j in occas[i]] + [2 * j + 1 for j in occbs[i]])) * \
                    coeff[i]
-    ncore = ncore_electrons // 2
+    ncore = ncore_electrons #// 2
     core = [i for i in range(ncore)]
     occas = [np.array(core + [o + ncore for o in oa]) for oa in occas]
     occbs = [np.array(core + [o + ncore for o in ob]) for ob in occbs]
@@ -98,11 +100,9 @@ class IpieInput(object):
         self.n_qubits = 2 * self.num_active_orbitals
         self.num_frozen_core = options.get("num_frozen_core", 0)
         self.ipie_input_dir = options.get("ipie_input_dir", "./")
-
-        self.ncore_electrons = options.get("ncore_electrons", 0)
-
-        self.n_alpha = int((self.num_active_electrons + self.spin) / 2)
-        self.n_beta = int((self.num_active_electrons - self.spin) / 2)
+        self.check_energy_openfermion = options.get("check_energy_openfermion", 0)
+        self.threshold_wf = options.get("threshold_wf", 1e-6)
+        # self.ncore_electrons = options.get("ncore_electrons", 0)
 
         pyscf_chkfile = self.chkptfile_rohf
         if self.mcscf:
@@ -111,22 +111,28 @@ class IpieInput(object):
             self.scf_data = load_from_pyscf_chkfile(pyscf_chkfile)
         self.mol = self.scf_data["mol"]
         self.mol_nelec = self.mol.nelec
-        print("# (nalpha, nbeta)=", self.mol_nelec)
 
+        self.n_alpha = int((self.num_active_electrons + self.spin) / 2)
+        self.n_beta = int((self.num_active_electrons - self.spin) / 2)
+        self.ncore_electrons = (sum(self.mol_nelec) - (self.n_alpha + self.n_beta)) // 2
+        print("# (nalpha, nbeta)_total =", self.mol_nelec)
+        print("# (nalpha, nbeta)_active =", self.n_alpha, self.n_beta)
+        print("# ncore_electrons", self.ncore_electrons)
         self.trial_name = ""
-
+        self.ndets = 0
         str_date = datetime.today().strftime('%Y%m%d_%H%M%S')
 
         if len(self.output_dir) == 0:
             self.output_dir = str_date
         else:
             self.output_dir = self.output_dir + "_" + str_date
-
+        print(f"# using folder {self.output_dir} for afqmc input files and estimators")
         os.makedirs(self.output_dir, exist_ok=True)
-
-        os.makedirs(self.ipie_input_dir, exist_ok=True)
         with open(os.path.join(self.output_dir, sys.argv[1]), 'w') as f:
             json.dump(options, f, ensure_ascii=False, indent=4)
+
+        print(f"# using folder {self.ipie_input_dir} for afqmc hamiltonian.h5 and wavefunction.h5")
+        os.makedirs(self.ipie_input_dir, exist_ok=True)
 
     def gen_wave_function(self):
         """
@@ -142,34 +148,47 @@ class IpieInput(object):
             spin_s_square = get_sparse_operator(s_squared_operator(num_active_orbitals))
             spin_s_z = of_spin_operator("projected", 2 * num_active_orbitals)
 
-            final_state_vector = np.loadtxt(filen_state_vec, dtype=complex)
-
+            final_state_vector = np.loadtxt(filen_state_vec, dtype=complex, comments="#")
             final_state_vector = convert_state_big_endian(final_state_vector)
 
-            normalization = np.sqrt(np.dot(final_state_vector.T.conj(), final_state_vector))
+            normalization = np.sqrt(np.dot(final_state_vector.T.conj(), final_state_vector)).real
+
             final_state_vector /= normalization
 
             spin_sq_value = final_state_vector.conj().T @ spin_s_square @ final_state_vector
             spin_proj = final_state_vector.conj().T @ spin_s_z @ final_state_vector
+            if self.check_energy_openfermion:
+                filehandler_ham = open(self.hamiltonian_fname, 'rb')
+                jw_hamiltonian = pickle.load(filehandler_ham)
+
+                jw_hamiltonian_sparse = get_sparse_operator(jw_hamiltonian, 2 * self.num_active_orbitals)
+
+                energy = final_state_vector.conj().T @ jw_hamiltonian_sparse @ final_state_vector
+                print(f"# Energy of the trial {self.filen_state_vec} is ", energy)
 
             print("# spin_sq_value", spin_sq_value)
             print("# spin_proj", spin_proj)
             print("# ncore_electrons", ncore_electrons)
+            coeff, occas, occbs = get_coeff_wf(final_state_vector,
+                                               (self.n_alpha, self.n_beta),
+                                               ncore_electrons,
+                                               thres=self.threshold_wf)
 
-            coeff, occas, occbs = get_coeff_wf(final_state_vector, ncore_electrons)
             coeff = np.array(coeff, dtype=complex)
             ixs = np.argsort(np.abs(coeff))[::-1]
             coeff = coeff[ixs]
             occas = np.array(occas)[ixs]
             occbs = np.array(occbs)[ixs]
-
+            self.ndets = np.size(coeff)
             bare_filen_state_vec = os.path.splitext(os.path.basename(filen_state_vec))[0]
             self.trial_name = f'{bare_filen_state_vec}_msd_trial_{len(coeff)}.h5'
+
             write_wavefunction((coeff, occas, occbs),
                                os.path.join(file_path, self.trial_name))
 
             n_alpha = len(occas[0])
             n_beta = len(occbs[0])
+
             with h5py.File(
                     os.path.join(file_path, self.trial_name),
                     'a') as fh5:
@@ -264,3 +283,39 @@ class IpieInput(object):
         print(f"# Energy of the trial {self.filen_state_vec} is ", energy)
 
         return energy
+
+
+def write_json_input_file():
+    """
+        write basic input json
+    """
+    basic = {
+        "num_active_orbitals": 5,
+        "num_active_electrons": 5,
+        "hamiltonian_fname": "ham/FeNTA_s_1_cc-pvtz_5e_5o/ham_FeNTA_cc-pvtz_5e_5o.pickle",
+        "spin": 1,
+        "chkptfile_cas": "FeNTA_spin_1/basis_cc-pVTZ/CAS_5_5/mcscf.chk",
+        "chkptfile_rohf": "FeNTA_spin_1/basis_cc-pVTZ/ROHF/scfref.chk",
+        "basis": "cc-pVTZ",
+        "atom": "FeNTA_spin_1/geo.xyz",
+        "dmrg": 0,
+        "dmrg_states": 200,
+        "target": "",
+        "optimizer_type": "scipy",
+        "output_dir": "./files_afqmc",
+        "file_wavefunction": "wf_6_+0.7500_+0.4998.dat",
+        "ncore_electrons": 0,
+        "generate_chol_hamiltonian": 1,
+        "chol_cut": 1e-0,
+        "dir_integral": "ham/FeNTA_s_1_cc-pvtz_5e_5o",
+        "ipie_input_dir": "./ipie_fenta_input",
+        "nwalkers": 10,
+        "nsteps": 10,
+        "nblocks": 10
+    }
+    with open("input_filename.json", "w") as f:
+        f.write(json.dumps(basic, indent=4, separators=(",", ": ")))
+
+
+
+

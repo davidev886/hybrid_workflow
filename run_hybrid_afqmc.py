@@ -9,7 +9,8 @@ from ipie.systems.generic import Generic
 from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
 from src.input_ipie import IpieInput
 from src.s2_estimator import S2Mixed
-
+from ipie.qmc.calc import get_driver
+from ipie.config import MPI
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=10000)
@@ -23,7 +24,7 @@ def main():
         input_ipie.gen_hamiltonian()
     input_ipie.gen_wave_function()
 
-    input_ipie.check_energy_state()
+    # input_ipie.check_energy_state()
 
     with h5py.File(os.path.join(input_ipie.ipie_input_dir, input_ipie.chol_hamil_file)) as fa:
         chol = fa["LXmn"][()]
@@ -85,6 +86,73 @@ def main():
     print(qmc_data)
 
 
-if __name__ == "__main__":
-    main()
+def afqmc_with_drive():
+    """
+        Run the afqmc with input file from command line.
+        Use write_json_input_file from src.input_ipie to generate a sample input file
+    """
+    comm = MPI.COMM_WORLD
+    np.set_printoptions(precision=6, suppress=True, linewidth=10000)
+    options_file = sys.argv[1]
+    if comm.rank == 0:
+        with open(options_file) as f:
+            options = json.load(f)
 
+        input_ipie = IpieInput(options)
+
+        if input_ipie.generate_chol_hamiltonian:
+            input_ipie.gen_hamiltonian()
+        input_ipie.gen_wave_function()
+
+        n_alpha, n_beta = input_ipie.mol_nelec
+
+        nwalkers = options.get("nwalkers", 25)
+        nsteps = options.get("nsteps", 10)
+        nblocks = options.get("nblocks", 10)
+        seed = 96264512
+        input_options = {
+            "system": {
+                "nup": n_alpha,
+                "ndown": n_beta,
+            },
+            "hamiltonian": {"name": "Generic",
+                            "integrals": os.path.join(input_ipie.ipie_input_dir,
+                                                      input_ipie.chol_hamil_file),
+                            },
+            "qmc": {
+                "dt": 0.005,
+                "nsteps": nsteps,
+                "nwalkers": nwalkers,
+                "blocks": nblocks,
+                "batched": True,
+                "rng_seed": seed,
+            },
+            "trial": {"filename": os.path.join(input_ipie.ipie_input_dir,
+                                               input_ipie.trial_name),
+                      "wicks": False,
+                      "optimized": True,
+                      "use_wicks_helper": True,
+                      'ndets': input_ipie.ndets,
+                      "compute_trial_energy": True
+                      },
+            "verbosity": 1
+        }
+    else:
+        input_options = None
+        input_ipie = None
+    input_options = comm.bcast(input_options, root=0)
+    input_ipie = comm.bcast(input_ipie, root=0)
+    afqmc_msd = get_driver(input_options, comm)
+    afqmc_msd.trial.calculate_energy(afqmc_msd.system, afqmc_msd.hamiltonian)
+    afqmc_msd.trial.e1b = comm.bcast(afqmc_msd.trial.e1b, root=0)
+    afqmc_msd.trial.e2b = comm.bcast(afqmc_msd.trial.e2b, root=0)
+
+    estimators = {"S2": S2Mixed(ham=afqmc_msd.hamiltonian)}
+    afqmc_msd.run(additional_estimators=estimators,
+                  estimator_filename=os.path.join(input_ipie.output_dir, "estimator.0.h5")
+                )
+    afqmc_msd.finalise(verbose=True)
+
+
+if __name__ == "__main__":
+    afqmc_with_drive()
