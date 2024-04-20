@@ -138,8 +138,8 @@ def afqmc_with_drive():
             "verbosity": 3
         }
     else:
-        options = None
-    input_options = comm.bcast(options, root=0)
+        input_options = None
+    input_options = comm.bcast(input_options, root=0)
 
     afqmc_msd, comm = setup_calculation(input_options)
     afqmc_msd.trial.calculate_energy(afqmc_msd.system, afqmc_msd.hamiltonian)
