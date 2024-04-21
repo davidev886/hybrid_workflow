@@ -142,11 +142,11 @@ def afqmc_with_drive():
         input_options = None
         input_ipie = None
     input_options = comm.bcast(input_options, root=0)
-    input_ipie = comm.bcast(input_ipie, root=0)
+    # input_ipie = comm.bcast(input_ipie, root=0)
     afqmc_msd = get_driver(input_options, comm)
-    afqmc_msd.trial.calculate_energy(afqmc_msd.system, afqmc_msd.hamiltonian)
-    afqmc_msd.trial.e1b = comm.bcast(afqmc_msd.trial.e1b, root=0)
-    afqmc_msd.trial.e2b = comm.bcast(afqmc_msd.trial.e2b, root=0)
+    # afqmc_msd.trial.calculate_energy(afqmc_msd.system, afqmc_msd.hamiltonian)
+    # afqmc_msd.trial.e1b = comm.bcast(afqmc_msd.trial.e1b, root=0)
+    # afqmc_msd.trial.e2b = comm.bcast(afqmc_msd.trial.e2b, root=0)
 
     estimators = {"S2": S2Mixed(ham=afqmc_msd.hamiltonian)}
     afqmc_msd.run(additional_estimators=estimators,
