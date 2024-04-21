@@ -10,7 +10,7 @@ from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
 from src.input_ipie import IpieInput
 from src.s2_estimator import S2Mixed
 from ipie.qmc.calc import get_driver
-from ipie.config import MPI
+from ipie.config import config, MPI
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=10000)
@@ -99,6 +99,7 @@ def afqmc_with_drive():
             options = json.load(f)
 
         input_ipie = IpieInput(options)
+        config.update_option("use_gpu", input_ipie.use_gpu)
 
         if input_ipie.generate_chol_hamiltonian:
             input_ipie.gen_hamiltonian()
