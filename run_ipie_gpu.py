@@ -71,7 +71,8 @@ if __name__ == "__main__":
     config.update_option("use_gpu", True)
 
     from ipie.utils.backend import arraylib as xp
-
+    print(xp)
+    exit()
     from ipie.hamiltonians.generic_chunked import GenericRealCholChunked as HamGeneric
     from ipie.qmc.afqmc import AFQMC
     from ipie.systems.generic import Generic
