@@ -65,12 +65,14 @@ if __name__ == "__main__":
         from mpi4py import MPI
     except ImportError:
         sys.exit(0)
-
+    import ipie
+    print(ipie.__path__)
     from ipie.config import config
 
     config.update_option("use_gpu", True)
 
     from ipie.utils.backend import arraylib as xp
+
     print(xp)
     exit()
     from ipie.hamiltonians.generic_chunked import GenericRealCholChunked as HamGeneric
