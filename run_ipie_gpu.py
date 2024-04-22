@@ -70,7 +70,7 @@ if __name__ == "__main__":
     from ipie.config import config
 
     config.update_option("use_gpu", True)
-
+    print(config)
     from ipie.utils.backend import arraylib as xp
 
     print(xp)
