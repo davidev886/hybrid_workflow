@@ -102,7 +102,7 @@ class IpieInput(object):
         self.ipie_input_dir = options.get("ipie_input_dir", "./")
         self.check_energy_openfermion = options.get("check_energy_openfermion", 0)
         self.threshold_wf = options.get("threshold_wf", 1e-6)
-        self.use_gpu = options.get("threshold_wf", 0)
+        self.use_gpu = options.get("use_gpu", 0)
         # self.ncore_electrons = options.get("ncore_electrons", 0)
 
         pyscf_chkfile = self.chkptfile_rohf
