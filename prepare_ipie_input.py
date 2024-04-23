@@ -62,9 +62,12 @@ if __name__ == "__main__":
         dm = mf.from_chk(chkptfile_rohf)
         # mf.max_cycle = 0
         mf.kernel(dm)
+        # make a copy of the chk file from pyscf and append the info on the MSD trial
+        chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
+        shutil.copy(chkptfile_rohf, os.path.join(ipie_input_dir, chk_fname))
     else:
-        chkptfile_rohf = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
-        print("# saving chkfile to", os.path.join(ipie_input_dir, chkptfile_rohf))
+        chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
+        print("# saving chkfile to", os.path.join(ipie_input_dir, chk_fname))
         mf.chkfile = os.path.join(ipie_input_dir, chkptfile_rohf)
         mf.kernel()
 
@@ -100,12 +103,10 @@ if __name__ == "__main__":
                              tol=threshold_wf,
                              return_strs=False)
     )
-    chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
+
     ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
     wfn_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_wfn.h5"
 
-    # make a copy of the chk file from pyscf and append the info on the MSD trial
-    shutil.copy(chkptfile_rohf, os.path.join(ipie_input_dir, chk_fname))
     with h5py.File(os.path.join(ipie_input_dir, chk_fname), "r+") as fh5:
         fh5["mcscf/ci_coeffs"] = coeff
         fh5["mcscf/occs_alpha"] = occa
