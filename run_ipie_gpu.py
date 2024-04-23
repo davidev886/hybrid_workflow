@@ -8,27 +8,21 @@ try:
     from mpi4py import MPI
 except ImportError:
     sys.exit(0)
-import ipie
 
-print(ipie.__path__)
 from ipie.config import config
-
 config.update_option("use_gpu", True)
-print(config)
+
 from ipie.utils.backend import arraylib as xp
 
-print(xp)
-exit()
-
-from pyscf import gto, scf, fci, mcscf, lib
-from pyscf.lib import chkfile
-import shutil
+from pyscf import gto
 import h5py
-from ipie.hamiltonians.generic import Generic as HamGeneric
+
+from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
+from ipie.hamiltonians.generic_chunked import GenericRealCholChunked as HamGeneric
 from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
-from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
-from src.from_pyscf_mod import gen_ipie_input_from_pyscf_chk_mod
+from ipie.utils.mpi import MPIHandler, make_splits_displacements
+from ipie.utils.pack_numba import pack_cholesky
 
 
 if __name__ == "__main__":
@@ -78,11 +72,6 @@ if __name__ == "__main__":
     ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
     wfn_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_wfn.h5"
 
-    from ipie.hamiltonians.generic_chunked import GenericRealCholChunked as HamGeneric
-    from ipie.qmc.afqmc import AFQMC
-    from ipie.systems.generic import Generic
-    from ipie.trial_wavefunction.single_det import SingleDet
-
     gpu_number_per_node = 4
     nmembers = 1
     gpu_id = MPI.COMM_WORLD.rank % gpu_number_per_node
@@ -103,11 +92,7 @@ if __name__ == "__main__":
     size = comm.Get_size()
     srank = rank % nmembers
 
-    from ipie.utils.mpi import MPIHandler, make_splits_displacements
-
     handler = MPIHandler(nmembers=nmembers, verbose=True)
-
-    from ipie.utils.pack_numba import pack_cholesky
 
     num_basis = hcore.shape[-1]
     with h5py.File(f"chol_{srank}.h5") as fa:
