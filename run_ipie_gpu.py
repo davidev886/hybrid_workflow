@@ -13,7 +13,7 @@ from ipie.config import config
 config.update_option("use_gpu", True)
 
 from ipie.utils.backend import arraylib as xp
-
+print(xp)
 from pyscf import gto
 import h5py
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     timestep = 0.005
     rng_seed = None
 
-    with h5py.File("hamiltonian.h5") as fa:
+    with h5py.File(os.path.join(ipie_input_dir, ham_file)) as fa:
         e0 = fa["e0"][()]
         hcore = fa["hcore"][()]
 
