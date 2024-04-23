@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     print('FCI Energy in CAS:', e_tot)
 
-    gen_ipie_input_from_pyscf_chk_mod(os.path.join(ipie_input_dir, chk_fname),
+    gen_ipie_input_from_pyscf_chk_mod(chkptfile_rohf,
                                       hamil_file=os.path.join(ipie_input_dir, ham_file),
                                       wfn_file=os.path.join(ipie_input_dir, wfn_file),
                                       mcscf=True,
