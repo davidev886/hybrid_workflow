@@ -68,7 +68,7 @@ if __name__ == "__main__":
     else:
         chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
         print("# saving chkfile to", os.path.join(ipie_input_dir, chk_fname))
-        mf.chkfile = os.path.join(ipie_input_dir, chkptfile_rohf)
+        mf.chkfile = os.path.join(ipie_input_dir, chk_fname)
         mf.kernel()
 
     my_casci = mcscf.CASCI(mf, num_active_orbitals, num_active_electrons)
