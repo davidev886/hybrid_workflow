@@ -104,7 +104,7 @@ if __name__ == "__main__":
     wfn_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_wfn.h5"
 
     # make a copy of the chk file from pyscf and append the info on the MSD trial
-    shutil.copy(chkptfile_cas, os.path.join(ipie_input_dir, chk_fname))
+    shutil.copy(chkptfile_rohf, os.path.join(ipie_input_dir, chk_fname))
     with h5py.File(os.path.join(ipie_input_dir, chk_fname), "r+") as fh5:
         fh5["mcscf/ci_coeffs"] = coeff
         fh5["mcscf/occs_alpha"] = occa
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     print('FCI Energy in CAS:', e_tot)
 
-    gen_ipie_input_from_pyscf_chk_mod(chkptfile_rohf,
+    gen_ipie_input_from_pyscf_chk_mod(os.path.join(ipie_input_dir, chk_fname),
                                       hamil_file=os.path.join(ipie_input_dir, ham_file),
                                       wfn_file=os.path.join(ipie_input_dir, wfn_file),
                                       mcscf=True,
