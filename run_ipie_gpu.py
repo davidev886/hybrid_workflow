@@ -2,6 +2,24 @@ import os
 import sys
 import numpy as np
 import json
+
+try:
+    import cupy
+    from mpi4py import MPI
+except ImportError:
+    sys.exit(0)
+import ipie
+
+print(ipie.__path__)
+from ipie.config import config
+
+config.update_option("use_gpu", True)
+print(config)
+from ipie.utils.backend import arraylib as xp
+
+print(xp)
+exit()
+
 from pyscf import gto, scf, fci, mcscf, lib
 from pyscf.lib import chkfile
 import shutil
@@ -60,21 +78,6 @@ if __name__ == "__main__":
     ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
     wfn_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_wfn.h5"
 
-    try:
-        import cupy
-        from mpi4py import MPI
-    except ImportError:
-        sys.exit(0)
-    import ipie
-    print(ipie.__path__)
-    from ipie.config import config
-
-    config.update_option("use_gpu", True)
-    print(config)
-    from ipie.utils.backend import arraylib as xp
-
-    print(xp)
-    exit()
     from ipie.hamiltonians.generic_chunked import GenericRealCholChunked as HamGeneric
     from ipie.qmc.afqmc import AFQMC
     from ipie.systems.generic import Generic
