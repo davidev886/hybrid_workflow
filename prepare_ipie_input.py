@@ -63,6 +63,7 @@ if __name__ == "__main__":
         # mf.max_cycle = 0
         mf.kernel(dm)
     else:
+        chkptfile_rohf = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
         print("# saving chkfile to", os.path.join(ipie_input_dir, chkptfile_rohf))
         mf.chkfile = os.path.join(ipie_input_dir, chkptfile_rohf)
         mf.kernel()
