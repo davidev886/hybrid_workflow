@@ -95,7 +95,9 @@ if __name__ == "__main__":
     handler = MPIHandler(nmembers=nmembers, verbose=True)
 
     num_basis = hcore.shape[-1]
-    with h5py.File(f"chol_{srank}.h5") as fa:
+    chol_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chol.h5"
+    chol_fname = os.path.splitext(os.path.join(ipie_input_dir, chol_fname))[0]
+    with h5py.File(f"{chol_fname}_{srank}.h5", 'r') as fa:
         chol_chunk = fa["chol"][()]
 
     chunked_chols = chol_chunk.shape[-1]
