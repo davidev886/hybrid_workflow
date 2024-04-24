@@ -6,7 +6,8 @@ import os
 import sys
 import numpy as np
 import json
-from pyscf import gto, scf
+from pyscf import gto, scf, fci, mcscf, lib
+from pyscf.lib import chkfile
 import shutil
 import h5py
 from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
@@ -43,6 +44,10 @@ if __name__ == "__main__":
     use_gpu = options.get("use_gpu", 0)
     num_gpus = options.get("num_gpus", 4)
     hamiltonian_fname = f"ham_{label_molecule}_{basis}_{num_active_electrons}e_{num_active_orbitals}o.pickle"
+    chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
+    ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
+    wfn_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_wfn.h5"
+    chol_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chol.h5"
 
     os.makedirs(ipie_input_dir, exist_ok=True)
     multiplicity = spin + 1
@@ -70,15 +75,53 @@ if __name__ == "__main__":
         mf.chkfile = os.path.join(ipie_input_dir, chk_fname)
         mf.kernel()
 
-    ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
+    my_casci = mcscf.CASCI(mf, num_active_orbitals, num_active_electrons)
+    nocca_act = (num_active_electrons + spin) // 2
+    noccb_act = (num_active_electrons - spin) // 2
+    if dmrg in (1, 'true'):
+        from pyscf import dmrgscf
+        # dir_path = (f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o/"
+        #             f"dmrg_M_{dmrg_states}")
+        my_casci.fcisolver = dmrgscf.DMRGCI(mol, maxM=dmrg_states, tol=1E-10)
+        my_casci.fcisolver.runtimeDir = os.path.abspath(lib.param.TMPDIR)
+        my_casci.fcisolver.scratchDirectory = os.path.abspath(lib.param.TMPDIR)
+        my_casci.fcisolver.threads = dmrg_thread
+        my_casci.fcisolver.memory = int(mol.max_memory / 1000)  # mem in GB
+        my_casci.fcisolver.conv_tol = 1e-14
+    else:
+        # dir_path = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o"
+        x = (mol.spin / 2 * (mol.spin / 2 + 1))
+        print(f"fix spin squared to x={x}")
+        my_casci.fix_spin_(ss=x)
+
+    if chkptfile_cas and os.path.exists(chkptfile_cas):
+        mo = chkfile.load(chkptfile_cas, 'mcscf/mo_coeff')
+        e_tot, e_cas, fcivec, mo_output, mo_energy = my_casci.kernel(mo)
+    else:
+        e_tot, e_cas, fcivec, mo_output, mo_energy = my_casci.kernel()
+
+    coeff, occa, occb = zip(
+        *fci.addons.large_ci(fcivec,
+                             num_active_orbitals,
+                             (nocca_act, noccb_act),
+                             tol=threshold_wf,
+                             return_strs=False)
+    )
+    # append the info on the MSD trial to the chk file from pyscf
+    with h5py.File(os.path.join(ipie_input_dir, chk_fname), "r+") as fh5:
+        fh5["mcscf/ci_coeffs"] = coeff
+        fh5["mcscf/occs_alpha"] = occa
+        fh5["mcscf/occs_beta"] = occb
+
+    print('FCI Energy in CAS:', e_tot)
 
     gen_ipie_input_from_pyscf_chk(os.path.join(ipie_input_dir, chk_fname),
                                   hamil_file=os.path.join(ipie_input_dir, ham_file),
+                                  wfn_file=os.path.join(ipie_input_dir, wfn_file),
                                   mcscf=False)
 
     from ipie.utils.chunk_large_chol import split_cholesky
 
-    chol_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chol.h5"
     print("# splitting cholesky in", os.path.join(ipie_input_dir, chol_fname))
     split_cholesky(os.path.join(ipie_input_dir, ham_file),
                    num_gpus,
