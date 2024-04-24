@@ -223,7 +223,6 @@ if __name__ == "__main__":
         occa = fh5["occ_alpha"][:]
         occb = fh5["occ_beta"][:]
 
-    ParticleHole.half_rotate = half_rotate_chunked
     wavefunction = (coeff, occa, occb)
     trial = ParticleHole(
         wavefunction,
@@ -232,22 +231,28 @@ if __name__ == "__main__":
         num_dets_for_props=len(wavefunction[0]),
         verbose=True,
     )
-    trial.compute_trial_energy = True
+    trial.compute_trial_energy = False
+    trial.handler = handler
     trial.build()
     print("check variable trial:")
     print("before trial.half_rotated", trial.half_rotated)
     half_rotate_2(trial, ham, comm)
     print("after trial.half_rotated", trial.half_rotated)
-    # from ipie.walkers.uhf_walkers import UHFWalkers
-    #
-    # walkers = UHFWalkers(numpy.hstack([phi0a, phi0a]), system.nup, system.ndown, ham.nbasis, num_walkers,
-    #                      mpi_handler=handler)
-    # walkers.build(trial)
+    from ipie.walkers.uhf_walkers import UHFWalkers
+
+    walkers = UHFWalkers(np.hstack([trial.psi0a, trial.psi0b]),
+                         system.nup,
+                         system.ndown,
+                         ham.nbasis,
+                         num_walkers,
+                         mpi_handler=handler)
+    walkers.build(trial)
 
     afqmc_msd = AFQMC.build(
         mol_nelec,
         ham,
         trial,
+        walkers=walkers,
         num_walkers=nwalkers,
         num_steps_per_block=nsteps,
         num_blocks=nblocks,
