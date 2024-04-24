@@ -17,7 +17,7 @@ print(xp)
 from pyscf import gto
 import h5py
 
-from ipie.trial_wavefunction.particle_hole import ParticleHoleNonChunked
+from ipie.trial_wavefunction.particle_hole import ParticleHole
 from ipie.hamiltonians.generic_chunked import GenericRealCholChunked as HamGeneric
 from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
@@ -133,8 +133,11 @@ if __name__ == "__main__":
         occa = fh5["occ_alpha"][:]
         occb = fh5["occ_beta"][:]
 
+    from ipie.trial_wavefunction.half_rotate import half_rotate_chunked
+
+    ParticleHole.half_rotate = half_rotate_chunked
     wavefunction = (coeff, occa, occb)
-    trial = ParticleHoleNonChunked(
+    trial = ParticleHole(
         wavefunction,
         mol.nelec,
         num_basis,
