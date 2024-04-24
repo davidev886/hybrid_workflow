@@ -146,7 +146,12 @@ if __name__ == "__main__":
     )
     trial.compute_trial_energy = True
     trial.build()
-    trial.half_rotate(ham)
+    orbsa = trial.psi0a.reshape((trial.num_dets, trial.nbasis, trial.nalpha))
+    orbsb = trial.psi0b.reshape((trial.num_dets, trial.nbasis, trial.nbeta))
+    trial.half_rotate(ham,
+                      orbsa=orbsa,
+                      orbsb=orbsb,
+                      comm=comm)
 
     # from ipie.walkers.uhf_walkers import UHFWalkers
     #
