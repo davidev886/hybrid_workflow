@@ -63,15 +63,18 @@ if __name__ == "__main__":
     )
     nocca, noccb = mol.nelec
     mf = scf.ROHF(mol)
+    try:
+        os.remove(os.path.join(ipie_input_dir, chk_fname))
+    except OSError:
+        pass
+
     if chkptfile_rohf and os.path.exists(chkptfile_rohf):
         dm = mf.from_chk(chkptfile_rohf)
         # mf.max_cycle = 0
         mf.kernel(dm)
         # make a copy of the chk file from pyscf and append the info on the MSD trial
-        chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
         shutil.copy(chkptfile_rohf, os.path.join(ipie_input_dir, chk_fname))
     else:
-        chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
         print("# saving chkfile to", os.path.join(ipie_input_dir, chk_fname))
         mf.chkfile = os.path.join(ipie_input_dir, chk_fname)
         mf.kernel()
