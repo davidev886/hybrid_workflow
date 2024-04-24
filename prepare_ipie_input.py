@@ -43,6 +43,7 @@ if __name__ == "__main__":
     nblocks = options.get("nblocks", 10)
     use_gpu = options.get("use_gpu", 0)
     num_gpus = options.get("num_gpus", 4)
+    chol_cut = options.get("chol_cut", 1e-5)
     hamiltonian_fname = f"ham_{label_molecule}_{basis}_{num_active_electrons}e_{num_active_orbitals}o.pickle"
     chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
     ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
@@ -118,7 +119,8 @@ if __name__ == "__main__":
     gen_ipie_input_from_pyscf_chk(os.path.join(ipie_input_dir, chk_fname),
                                   hamil_file=os.path.join(ipie_input_dir, ham_file),
                                   wfn_file=os.path.join(ipie_input_dir, wfn_file),
-                                  mcscf=False)
+                                  chol_cut=chol_cut,
+                                  mcscf=True)
 
     from ipie.utils.chunk_large_chol import split_cholesky
 
