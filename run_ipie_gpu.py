@@ -25,6 +25,96 @@ from ipie.utils.mpi import MPIHandler, make_splits_displacements
 from ipie.utils.pack_numba import pack_cholesky
 
 
+def half_rotate_original(self, hamiltonian, comm=None):
+    # First get half rotated integrals for reference determinant
+    ndets = 1
+    orbsa = self.psi0a.reshape((ndets, self.nbasis, self.nalpha))
+    orbsb = self.psi0b.reshape((ndets, self.nbasis, self.nbeta))
+    rot_1body, rot_chol = half_rotate_generic(
+        self,
+        hamiltonian,
+        comm,
+        orbsa,
+        orbsb,
+        ndets=ndets,
+        verbose=self.verbose,
+    )
+    # Single determinant functions do not expect determinant index, so just
+    # grab zeroth element.
+    self._rH1a = rot_1body[0][0]
+    self._rH1b = rot_1body[1][0]
+    self._rchola = rot_chol[0][0]
+    self._rcholb = rot_chol[1][0]
+    # In MO basis just need to pick out active orbitals.
+    Id = np.eye(self.nbasis, dtype=self.psi0a.dtype)
+    act_orbs = (
+        Id[:, self.nfrozen: self.nfrozen + self.nact]
+        .copy()
+        .reshape((ndets, self.nbasis, self.nact))
+    )
+    _, rot_chol_act = half_rotate_generic(
+        self,
+        hamiltonian,
+        comm,
+        act_orbs,
+        act_orbs,
+        ndets=ndets,
+        verbose=self.verbose,
+    )
+    # Single determinant functions do not expect determinant index, so just
+    # grab zeroth element.
+    self._rchola_act = rot_chol_act[0][0]
+    # Discared beta since not needed.
+    self._rcholb_act = rot_chol_act[0][0]
+    self.half_rotated = True
+
+
+from ipie.trial_wavefunction.half_rotate import half_rotate_chunked
+
+
+def half_rotate_2(trial, hamiltonian, comm=None):
+    # First get half rotated integrals for reference determinant
+    ndets = 1
+    orbsa = trial.psi0a.reshape((ndets, trial.nbasis, trial.nalpha))
+    orbsb = trial.psi0b.reshape((ndets, trial.nbasis, trial.nbeta))
+    rot_1body, rot_chol = half_rotate_chunked(
+        trial,
+        hamiltonian,
+        comm,
+        orbsa,
+        orbsb,
+        ndets=ndets,
+        verbose=trial.verbose,
+    )
+    # Single determinant functions do not expect determinant index, so just
+    # grab zeroth element.
+    trial._rH1a = rot_1body[0][0]
+    trial._rH1b = rot_1body[1][0]
+    trial._rchola = rot_chol[0][0]
+    trial._rcholb = rot_chol[1][0]
+    # In MO basis just need to pick out active orbitals.
+    Id = np.eye(trial.nbasis, dtype=trial.psi0a.dtype)
+    act_orbs = (
+        Id[:, trial.nfrozen: trial.nfrozen + trial.nact]
+        .copy()
+        .reshape((ndets, trial.nbasis, trial.nact))
+    )
+    _, rot_chol_act = half_rotate_chunked(
+        trial,
+        hamiltonian,
+        comm,
+        act_orbs,
+        act_orbs,
+        ndets=ndets,
+        verbose=trial.verbose,
+    )
+    # Single determinant functions do not expect determinant index, so just
+    # grab zeroth element.
+    trial._rchola_act = rot_chol_act[0][0]
+    # Discared beta since not needed.
+    trial._rcholb_act = rot_chol_act[0][0]
+    trial.half_rotated = True
+
 if __name__ == "__main__":
     np.set_printoptions(precision=6, suppress=True, linewidth=10000)
     np.random.seed(12)
@@ -133,8 +223,6 @@ if __name__ == "__main__":
         occa = fh5["occ_alpha"][:]
         occb = fh5["occ_beta"][:]
 
-    from ipie.trial_wavefunction.half_rotate import half_rotate_chunked
-
     ParticleHole.half_rotate = half_rotate_chunked
     wavefunction = (coeff, occa, occb)
     trial = ParticleHole(
@@ -146,13 +234,10 @@ if __name__ == "__main__":
     )
     trial.compute_trial_energy = True
     trial.build()
-    orbsa = trial.psi0a.reshape((trial.num_dets, trial.nbasis, trial.nalpha))
-    orbsb = trial.psi0b.reshape((trial.num_dets, trial.nbasis, trial.nbeta))
-    trial.half_rotate(ham,
-                      orbsa=orbsa,
-                      orbsb=orbsb,
-                      comm=comm)
-
+    print("check variable trial:")
+    print("before trial.half_rotated", trial.half_rotated)
+    half_rotate_2(trial, ham, comm)
+    print("after trial.half_rotated", trial.half_rotated)
     # from ipie.walkers.uhf_walkers import UHFWalkers
     #
     # walkers = UHFWalkers(numpy.hstack([phi0a, phi0a]), system.nup, system.ndown, ham.nbasis, num_walkers,
