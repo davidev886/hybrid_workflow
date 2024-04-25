@@ -122,8 +122,7 @@ if __name__ == "__main__":
         stabilize_freq=5,
         seed=96264512,
         pop_control_freq=5,
-        verbose=True,
-        mpi_handler=handler)
+        verbose=True)
 
     afqmc_msd.run()
     afqmc_msd.finalise(verbose=True)
