@@ -18,7 +18,7 @@ from pyscf import gto
 import h5py
 
 from ipie.trial_wavefunction.particle_hole import ParticleHole
-from ipie.hamiltonians.generic_chunked import GenericRealCholChunked as HamGeneric
+from ipie.hamiltonians.generic import Generic as HamGeneric
 from ipie.qmc.afqmc import AFQMC
 from ipie.systems.generic import Generic
 
