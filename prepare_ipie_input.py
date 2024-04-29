@@ -53,35 +53,37 @@ if __name__ == "__main__":
     ham_file = input_ipie.ham_file
     wfn_file = input_ipie.wfn_file
     chol_fname = input_ipie.chol_fname
-
+    charge = input_ipie.charge
     multiplicity = spin + 1
-    charge = 0
 
-    mol = gto.M(
-        atom=atom,
-        spin=spin,
-        charge=charge,
-        basis=basis,
-        verbose=4
-    )
-    nocca, noccb = mol.nelec
-    mf = scf.ROHF(mol)
-    try:
-        os.remove(os.path.join(ipie_input_dir, chk_fname))
-    except OSError:
-        pass
 
-    if chkptfile_rohf and os.path.exists(chkptfile_rohf):
-        dm = mf.from_chk(chkptfile_rohf)
-        # mf.max_cycle = 0
-        mf.kernel(dm)
-        # make a copy of the chk file from pyscf and append the info on the MSD trial
-        shutil.copy(chkptfile_rohf, os.path.join(ipie_input_dir, chk_fname))
-    else:
-        print("# saving chkfile to", os.path.join(ipie_input_dir, chk_fname))
-        mf.chkfile = os.path.join(ipie_input_dir, chk_fname)
-        mf.kernel()
+    # mol = gto.M(
+    #     atom=atom,
+    #     spin=spin,
+    #     charge=charge,
+    #     basis=basis,
+    #     verbose=4
+    # )
+    # nocca, noccb = mol.nelec
+    # mf = scf.ROHF(mol)
+    # try:
+    #     os.remove(os.path.join(ipie_input_dir, chk_fname))
+    # except OSError:
+    #     pass
+    #
+    # if chkptfile_rohf and os.path.exists(chkptfile_rohf):
+    #     dm = mf.from_chk(chkptfile_rohf)
+    #     # mf.max_cycle = 0
+    #     mf.kernel(dm)
+    #     # make a copy of the chk file from pyscf and append the info on the MSD trial
+    #     shutil.copy(chkptfile_rohf, os.path.join(ipie_input_dir, chk_fname))
+    # else:
+    #     print("# saving chkfile to", os.path.join(ipie_input_dir, chk_fname))
+    #     mf.chkfile = os.path.join(ipie_input_dir, chk_fname)
+    #     mf.kernel()
 
+    mol = input_ipie.mol
+    mf =  input_ipie.mf
     my_casci = mcscf.CASCI(mf, num_active_orbitals, num_active_electrons)
     nocca_act = (num_active_electrons + spin) // 2
     noccb_act = (num_active_electrons - spin) // 2

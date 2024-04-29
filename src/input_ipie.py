@@ -7,7 +7,7 @@ from openfermion.linalg import get_sparse_operator
 from openfermion.hamiltonians import s_squared_operator
 from datetime import datetime
 import h5py
-
+from pyscf import gto, scf
 from ipie.utils.io import write_hamiltonian, write_wavefunction
 from ipie.utils.from_pyscf import (load_from_pyscf_chkfile,
                                    generate_hamiltonian,
@@ -17,10 +17,15 @@ from ipie.utils.from_pyscf import (load_from_pyscf_chkfile,
 from src.spin_square import of_spin_operator
 from src.pyscf_scripts import normal_ordering_swap
 import pickle
+import shutil
 
 
 def convert_state_big_endian(state_little_endian):
-
+    """
+    Convert a state vector from a superposition of little endian kets to big endian kets
+    :param state_little_endian:
+    :return:
+    """
     state_big_endian = 0. * state_little_endian
 
     n_qubits = int(np.log2(state_big_endian.size))
@@ -80,6 +85,7 @@ class IpieInput(object):
         self.num_active_electrons = options.get("num_active_electrons", 5)
         self.basis = options.get("basis", 'cc-pVTZ').lower()
         self.atom = options.get("atom", 'geo.xyz')
+        self.charge = options.get("charge", 0)
         self.dmrg = bool(options.get("dmrg", 0))
         self.dmrg_thread = options.get("dmrg_thread", 8)
         self.dmrg_states = options.get("dmrg_states", 1000)
@@ -125,13 +131,42 @@ class IpieInput(object):
         self.chol_fname = f"{string_label_system}_chol"
 
         pyscf_chkfile = self.chkptfile_rohf
-        if self.mcscf:
-            self.scf_data = load_from_pyscf_chkfile(pyscf_chkfile, base="mcscf")
-        else:
-            self.scf_data = load_from_pyscf_chkfile(pyscf_chkfile)
-        self.mol = self.scf_data["mol"]
-        self.mol_nelec = self.mol.nelec
+        if pyscf_chkfile:
+            if self.mcscf:
+                self.scf_data = load_from_pyscf_chkfile(pyscf_chkfile, base="mcscf")
+            else:
+                self.scf_data = load_from_pyscf_chkfile(pyscf_chkfile)
+            self.mol = self.scf_data["mol"]
+            mf = scf.ROHF(self.mol)
+            dm = mf.from_chk(self.chkptfile_rohf)
+            # mf.max_cycle = 0
+            mf.kernel(dm)
+            # make a copy of the chk file from pyscf and append the info on the MSD trial
+            shutil.copy(self.chkptfile_rohf, os.path.join(self.ipie_input_dir, self.chk_fname))
 
+        else:
+            mol = gto.M(
+                atom=self.atom,
+                spin=self.spin,
+                charge=self.charge,
+                basis=self.basis,
+                verbose=4
+            )
+            self.mol = mol
+
+
+            mf = scf.ROHF(mol)
+            try:
+                os.remove(os.path.join(self.ipie_input_dir, self.chk_fname))
+            except OSError:
+                pass
+
+            print("# saving chkfile to", os.path.join(self.ipie_input_dir, self.chk_fname))
+            mf.chkfile = os.path.join(self.ipie_input_dir, self.chk_fname)
+            mf.kernel()
+
+        self.mf = mf
+        self.mol_nelec = self.mol.nelec
         self.n_alpha = int((self.num_active_electrons + self.spin) / 2)
         self.n_beta = int((self.num_active_electrons - self.spin) / 2)
         self.ncore_electrons = (sum(self.mol_nelec) - (self.n_alpha + self.n_beta)) // 2
@@ -153,6 +188,8 @@ class IpieInput(object):
 
         print(f"# using folder {self.ipie_input_dir} for afqmc hamiltonian.h5 and wavefunction.h5")
         os.makedirs(self.ipie_input_dir, exist_ok=True)
+
+
 
     def gen_wave_function(self):
         """
