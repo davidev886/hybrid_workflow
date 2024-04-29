@@ -83,7 +83,7 @@ if __name__ == "__main__":
     #     mf.kernel()
 
     mol = input_ipie.mol
-    mf =  input_ipie.mf
+    mf = input_ipie.mf
     my_casci = mcscf.CASCI(mf, num_active_orbitals, num_active_electrons)
     nocca_act = (num_active_electrons + spin) // 2
     noccb_act = (num_active_electrons - spin) // 2
@@ -122,11 +122,14 @@ if __name__ == "__main__":
         )
 
     # append the info on the MSD trial to the chk file from pyscf
+    print(f"# Append the info on the MSD trial to the chk file {os.path.join(ipie_input_dir, chk_fname)}")
     with h5py.File(os.path.join(ipie_input_dir, chk_fname), "r+") as fh5:
         fh5["mcscf/ci_coeffs"] = coeff
         fh5["mcscf/occs_alpha"] = occa
         fh5["mcscf/occs_beta"] = occb
 
+    print(f"# Writing hamiltonian to {os.path.join(ipie_input_dir, ham_file)}")
+    print(f"# Writing wavefunction to {os.path.join(ipie_input_dir, wfn_file)}")
     gen_ipie_input_from_pyscf_chk(os.path.join(ipie_input_dir, chk_fname),
                                   hamil_file=os.path.join(ipie_input_dir, ham_file),
                                   wfn_file=os.path.join(ipie_input_dir, wfn_file),
