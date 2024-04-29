@@ -121,7 +121,7 @@ class IpieInput(object):
         self.chk_fname = f"{string_label_system}_chk.h5"
         self.ham_file = f"{string_label_system}_ham.h5"
         self.wfn_file = f"{string_label_system}_wfn.h5"
-        self.chol_fname = f"{string_label_system}.h5"
+        self.chol_fname = f"{string_label_system}_chol"
 
         pyscf_chkfile = self.chkptfile_rohf
         if self.mcscf:
