@@ -44,6 +44,7 @@ if __name__ == "__main__":
     use_gpu = options.get("use_gpu", 0)
     num_gpus = options.get("num_gpus", 4)
     chol_cut = options.get("chol_cut", 1e-5)
+    chol_split = options.get("chol_split", 0)
     hamiltonian_fname = f"ham_{label_molecule}_{basis}_{num_active_electrons}e_{num_active_orbitals}o.pickle"
     chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
     ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
@@ -125,45 +126,11 @@ if __name__ == "__main__":
                                   chol_cut=chol_cut,
                                   mcscf=True)
 
-    from ipie.utils.chunk_large_chol import split_cholesky
+    if chol_split:
+        from ipie.utils.chunk_large_chol import split_cholesky
 
-    print("# splitting cholesky in", os.path.join(ipie_input_dir, chol_fname))
-    split_cholesky(os.path.join(ipie_input_dir, ham_file),
-                   num_gpus,
-                   chol_fname=os.path.join(ipie_input_dir, chol_fname))  # split the cholesky to 4 subfiles
+        print("# splitting cholesky in", os.path.join(ipie_input_dir, chol_fname))
+        split_cholesky(os.path.join(ipie_input_dir, ham_file),
+                       num_gpus,
+                       chol_fname=os.path.join(ipie_input_dir, chol_fname))  # split the cholesky to 4 subfiles
 
-    # test that the splitting is done correctly. will this remove later
-    from mpi4py import MPI
-    from ipie.utils.mpi import MPIHandler, make_splits_displacements
-    from ipie.utils.pack_numba import pack_cholesky
-
-    nmembers = 1
-    comm = MPI.COMM_WORLD
-
-    with h5py.File(os.path.join(ipie_input_dir, ham_file)) as fa:
-        e0 = fa["e0"][()]
-        hcore = fa["hcore"][()]
-
-    rank = comm.Get_rank()
-    size = comm.Get_size()
-    srank = rank % nmembers
-
-    handler = MPIHandler(nmembers=nmembers, verbose=True)
-
-    num_basis = hcore.shape[-1]
-    chol_fname = os.path.splitext(os.path.join(ipie_input_dir, chol_fname))[0]
-    with h5py.File(f"{chol_fname}_{srank}.h5", 'r') as fa:
-        chol_chunk = fa["chol"][()]
-
-    chunked_chols = chol_chunk.shape[-1]
-    num_chol = handler.scomm.allreduce(chunked_chols, op=MPI.SUM)
-
-    chol_chunk_view = chol_chunk.reshape((num_basis, num_basis, -1))
-    cp_shape = (num_basis * (num_basis + 1) // 2, chol_chunk_view.shape[-1])
-    chol_packed_chunk = np.zeros(cp_shape, dtype=chol_chunk_view.dtype)
-    sym_idx = np.triu_indices(num_basis)
-    pack_cholesky(sym_idx[0], sym_idx[1], chol_packed_chunk, chol_chunk_view)
-    del chol_chunk_view
-
-    split_size = make_splits_displacements(num_chol, nmembers)[0]
-    assert chunked_chols == split_size[srank]
