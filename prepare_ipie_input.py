@@ -26,40 +26,33 @@ if __name__ == "__main__":
 
     input_ipie = IpieInput(options)
 
-    for attribute, value in input_ipie.__dict__.items():
-        print(f"{attribute} = {value}")
-        exec(f"{attribute} = {value}")
-
-    # num_active_orbitals = options.get("num_active_orbitals", 5)
-    # num_active_electrons = options.get("num_active_electrons", 5)
-    # chkptfile_rohf = options.get("chkptfile_rohf", None)
-    # chkptfile_cas = options.get("chkptfile_cas", None)
-    # # ipie_input_dir contains the hamiltonian.h5 and wavefunction.h5 for running ipie
-    # ipie_input_dir = options.get("ipie_input_dir", "./")
-    # basis = options.get("basis", 'cc-pVTZ').lower()
-    # atom = options.get("atom", 'geo.xyz')
-    # dmrg = options.get("dmrg", 0)
-    # dmrg_states = options.get("dmrg_states", 1000)
-    # spin = options.get("spin", 1)
-    # label_molecule = options.get("label_molecule", "FeNTA")
-    # dmrg_thread = options.get("dmrg_thread", 2)
-    # threshold_wf = options.get("threshold_wf", 1e-6)
-    # file_wavefunction = options.get("file_wavefunction", None)
-    # generate_chol_hamiltonian = bool(options.get("generate_chol_hamiltonian", 1))
-    # nwalkers = options.get("nwalkers", 25)
-    # nsteps = options.get("nsteps", 10)
-    # nblocks = options.get("nblocks", 10)
-    # use_gpu = options.get("use_gpu", 0)
-    # num_gpus = options.get("num_gpus", 4)
-    # chol_cut = options.get("chol_cut", 1e-5)
-    # chol_split = options.get("chol_split", 0)
-    # hamiltonian_fname = f"ham_{label_molecule}_{basis}_{num_active_electrons}e_{num_active_orbitals}o.pickle"
-    # chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
-    # ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
-    # wfn_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_wfn.h5"
-    # chol_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chol.h5"
-    #
-    # os.makedirs(ipie_input_dir, exist_ok=True)
+    num_active_orbitals = input_ipie.num_active_orbitals
+    num_active_electrons = input_ipie.num_active_electrons
+    chkptfile_rohf = input_ipie.chkptfile_rohf
+    chkptfile_cas = input_ipie.chkptfile_cas
+    ipie_input_dir = input_ipie.ipie_input_dir
+    basis = input_ipie.basis
+    atom = input_ipie.atom
+    dmrg = input_ipie.dmrg
+    dmrg_states = input_ipie.dmrg_states
+    spin = input_ipie.spin
+    label_molecule = input_ipie.label_molecule
+    dmrg_thread = input_ipie.dmrg_thread
+    threshold_wf = input_ipie.threshold_wf
+    file_wavefunction = input_ipie.file_wavefunction
+    generate_chol_hamiltonian = input_ipie.generate_chol_hamiltonian
+    nwalkers = input_ipie.nwalkers
+    nsteps = input_ipie.nsteps
+    nblocks = input_ipie.nblocks
+    use_gpu = input_ipie.use_gpu
+    num_gpus = input_ipie.num_gpus
+    chol_cut = input_ipie.chol_cut
+    chol_split = input_ipie.chol_split
+    chk_fname = input_ipie.chk_fname
+    hamiltonian_fname = input_ipie.hamiltonian_fname
+    ham_file = input_ipie.ham_file
+    wfn_file = input_ipie.wfn_file
+    chol_fname = input_ipie.chol_fname
 
     multiplicity = spin + 1
     charge = 0
