@@ -51,6 +51,10 @@ if __name__ == "__main__":
     nwalkers = options.get("nwalkers", 25)
     nsteps = options.get("nsteps", 10)
     nblocks = options.get("nblocks", 10)
+    timestep = options.get("timestep", 0.005)
+    stabilize_freq = options.get("stabilize_freq", 5)
+    seed = options.get("seed", 96264512)
+    pop_control_freq = options.get("pop_control_freq", 5)
     hamiltonian_fname = f"ham_{label_molecule}_{basis}_{num_active_electrons}e_{num_active_orbitals}o.pickle"
 
     os.makedirs(ipie_input_dir, exist_ok=True)
@@ -69,12 +73,6 @@ if __name__ == "__main__":
     chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
     ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
     wfn_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_wfn.h5"
-
-    num_walkers = 24
-    nsteps = 25
-    nblocks = 4
-    timestep = 0.005
-    rng_seed = None
 
     with h5py.File("hamiltonian.h5") as fa:
         chol = fa["LXmn"][()]
@@ -118,10 +116,10 @@ if __name__ == "__main__":
         num_walkers=nwalkers,
         num_steps_per_block=nsteps,
         num_blocks=nblocks,
-        timestep=0.005,
-        stabilize_freq=5,
-        seed=96264512,
-        pop_control_freq=5,
+        timestep=timestep,
+        stabilize_freq=stabilize_freq,
+        seed=seed,
+        pop_control_freq=pop_control_freq,
         verbose=True)
 
     afqmc_msd.run()
