@@ -81,6 +81,7 @@ class IpieInput(object):
         self.basis = options.get("basis", 'cc-pVTZ').lower()
         self.atom = options.get("atom", 'geo.xyz')
         self.dmrg = bool(options.get("dmrg", 0))
+        self.dmrg_thread = options.get("dmrg_thread", 8)
         self.dmrg_states = options.get("dmrg_states", 1000)
         self.chkptfile_rohf = options.get("chkptfile_rohf", None)
         self.chkptfile_cas = options.get("chkptfile_cas", None)
