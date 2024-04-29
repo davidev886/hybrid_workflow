@@ -80,7 +80,7 @@ class IpieInput(object):
         self.num_active_electrons = options.get("num_active_electrons", 5)
         self.basis = options.get("basis", 'cc-pVTZ').lower()
         self.atom = options.get("atom", 'geo.xyz')
-        self.dmrg = options.get("dmrg", 0)
+        self.dmrg = bool(options.get("dmrg", 0))
         self.dmrg_states = options.get("dmrg_states", 1000)
         self.chkptfile_rohf = options.get("chkptfile_rohf", None)
         self.chkptfile_cas = options.get("chkptfile_cas", None)
@@ -90,11 +90,13 @@ class IpieInput(object):
         self.start_layer = options.get("start_layer", 1)
         self.end_layer = options.get("end_layer", 10)
         self.init_params = options.get("init_params", None)
-        self.filen_state_vec = options.get("file_wavefunction", None)
+        self.file_wavefunction = options.get("file_wavefunction", None)
+        self.little_endian = bool(options.get("little_endian", 1))
         self.output_dir = options.get("output_dir", "")
         self.mcscf = options.get("mcscf", 1)
         self.chol_cut = options.get("chol_cut", 1e-5)
         self.chol_hamil_file = options.get("chol_hamil_file", "hamiltonian.h5")
+        self.chol_split = bool(options.get("chol_split", 0))
         self.generate_chol_hamiltonian = options.get("generate_chol_hamiltonian", 0)
         self.ortho_ao = options.get("ortho_ao", 0)
         self.n_qubits = 2 * self.num_active_orbitals
@@ -103,7 +105,23 @@ class IpieInput(object):
         self.check_energy_openfermion = options.get("check_energy_openfermion", 0)
         self.threshold_wf = options.get("threshold_wf", 1e-6)
         self.use_gpu = options.get("use_gpu", 0)
+        self.label_molecule = options.get("label_molecule", "FeNTA")
+        self.nwalkers = options.get("nwalkers", 25)
+        self.nsteps = options.get("nsteps", 10)
+        self.nblocks = options.get("nblocks", 10)
+        self.num_gpus = options.get("num_gpus", 4)
         # self.ncore_electrons = options.get("ncore_electrons", 0)
+
+        # ipie_input_dir contains the hamiltonian.h5 and wavefunction.h5 for running ipie
+        string_label_system = (f"{self.label_molecule}_"
+                               f"{self.basis}_"
+                               f"{self.num_active_electrons}e_{self.num_active_orbitals}o")
+
+        self.hamiltonian_fname = f"ham_{string_label_system}.pickle"
+        self.chk_fname = f"{string_label_system}_chk.h5"
+        self.ham_file = f"{string_label_system}_ham.h5"
+        self.wfn_file = f"{string_label_system}_wfn.h5"
+        self.chol_fname = f"{string_label_system}.h5"
 
         pyscf_chkfile = self.chkptfile_rohf
         if self.mcscf:
@@ -137,12 +155,12 @@ class IpieInput(object):
 
     def gen_wave_function(self):
         """
-            doc
+            Generate wave function from self.file_wavefunction (Assumes little endian for the wavefunction)
         """
         mol = self.mol
         num_active_orbitals = self.num_active_orbitals
         num_active_electrons = self.num_active_electrons
-        filen_state_vec = self.filen_state_vec
+        filen_state_vec = self.file_wavefunction
         file_path = self.ipie_input_dir
         ncore_electrons = self.ncore_electrons
         if self.mcscf:
@@ -150,7 +168,8 @@ class IpieInput(object):
             spin_s_z = of_spin_operator("projected", 2 * num_active_orbitals)
 
             final_state_vector = np.loadtxt(filen_state_vec, dtype=complex, comments="#")
-            final_state_vector = convert_state_big_endian(final_state_vector)
+            if self.little_endian:
+                final_state_vector = convert_state_big_endian(final_state_vector)
 
             normalization = np.sqrt(np.dot(final_state_vector.T.conj(), final_state_vector)).real
 
@@ -165,7 +184,7 @@ class IpieInput(object):
                 jw_hamiltonian_sparse = get_sparse_operator(jw_hamiltonian, 2 * self.num_active_orbitals)
 
                 energy = final_state_vector.conj().T @ jw_hamiltonian_sparse @ final_state_vector
-                print(f"# Energy of the trial {self.filen_state_vec} is ", energy)
+                print(f"# Energy of the trial {self.file_wavefunction} is ", energy)
 
             print("# spin_sq_value", spin_sq_value)
             print("# spin_proj", spin_proj)
@@ -180,22 +199,24 @@ class IpieInput(object):
             coeff = coeff[ixs]
             occas = np.array(occas)[ixs]
             occbs = np.array(occbs)[ixs]
-            self.ndets = np.size(coeff)
-            bare_filen_state_vec = os.path.splitext(os.path.basename(filen_state_vec))[0]
-            self.trial_name = f'{bare_filen_state_vec}_msd_trial_{len(coeff)}.h5'
+            # self.ndets = np.size(coeff)
+            # bare_filen_state_vec = os.path.splitext(os.path.basename(filen_state_vec))[0]
+            # self.trial_name = f'{bare_filen_state_vec}_msd_trial_{len(coeff)}.h5'
 
-            write_wavefunction((coeff, occas, occbs),
-                               os.path.join(file_path, self.trial_name))
+            # write_wavefunction((coeff, occas, occbs),
+            #                    os.path.join(file_path, self.trial_name))
+            #
+            # n_alpha = len(occas[0])
+            # n_beta = len(occbs[0])
+            #
+            # with h5py.File(
+            #         os.path.join(file_path, self.trial_name),
+            #         'a') as fh5:
+            #     fh5['active_electrons'] = num_active_electrons
+            #     fh5['active_orbitals'] = num_active_orbitals
+            #     fh5['nelec'] = (n_alpha, n_beta)
+            return coeff, occas, occbs
 
-            n_alpha = len(occas[0])
-            n_beta = len(occbs[0])
-
-            with h5py.File(
-                    os.path.join(file_path, self.trial_name),
-                    'a') as fh5:
-                fh5['active_electrons'] = num_active_electrons
-                fh5['active_orbitals'] = num_active_orbitals
-                fh5['nelec'] = (n_alpha, n_beta)
         else:
             hcore = self.scf_data["hcore"]
             ortho_ao_mat = self.scf_data["X"]
@@ -267,7 +288,7 @@ class IpieInput(object):
                           )
 
     def check_energy_state(self):
-        filen_state_vec = self.filen_state_vec
+        filen_state_vec = self.file_wavefunction
 
         final_state_vector = np.loadtxt(filen_state_vec, dtype=complex)
 
@@ -281,7 +302,7 @@ class IpieInput(object):
         jw_hamiltonian_sparse = get_sparse_operator(jw_hamiltonian, 2 * self.num_active_orbitals)
 
         energy = final_state_vector.conj().T @ jw_hamiltonian_sparse @ final_state_vector
-        print(f"# Energy of the trial {self.filen_state_vec} is ", energy)
+        print(f"# Energy of the trial {self.file_wavefunction} is ", energy)
 
         return energy
 

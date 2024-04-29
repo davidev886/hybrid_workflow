@@ -11,6 +11,7 @@ from pyscf.lib import chkfile
 import shutil
 import h5py
 from ipie.utils.from_pyscf import gen_ipie_input_from_pyscf_chk
+from src.input_ipie import IpieInput
 
 
 if __name__ == "__main__":
@@ -23,35 +24,43 @@ if __name__ == "__main__":
     with open(sys.argv[1]) as f:
         options = json.load(f)
 
-    num_active_orbitals = options.get("num_active_orbitals", 5)
-    num_active_electrons = options.get("num_active_electrons", 5)
-    chkptfile_rohf = options.get("chkptfile_rohf", None)
-    chkptfile_cas = options.get("chkptfile_cas", None)
-    # ipie_input_dir contains the hamiltonian.h5 and wavefunction.h5 for running ipie
-    ipie_input_dir = options.get("ipie_input_dir", "./")
-    basis = options.get("basis", 'cc-pVTZ').lower()
-    atom = options.get("atom", 'geo.xyz')
-    dmrg = options.get("dmrg", 0)
-    dmrg_states = options.get("dmrg_states", 1000)
-    spin = options.get("spin", 1)
-    label_molecule = options.get("label_molecule", "FeNTA")
-    dmrg_thread = options.get("dmrg_thread", 2)
-    threshold_wf = options.get("threshold_wf", 1e-6)
-    generate_chol_hamiltonian = bool(options.get("generate_chol_hamiltonian", 1))
-    nwalkers = options.get("nwalkers", 25)
-    nsteps = options.get("nsteps", 10)
-    nblocks = options.get("nblocks", 10)
-    use_gpu = options.get("use_gpu", 0)
-    num_gpus = options.get("num_gpus", 4)
-    chol_cut = options.get("chol_cut", 1e-5)
-    chol_split = options.get("chol_split", 0)
-    hamiltonian_fname = f"ham_{label_molecule}_{basis}_{num_active_electrons}e_{num_active_orbitals}o.pickle"
-    chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
-    ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
-    wfn_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_wfn.h5"
-    chol_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chol.h5"
+    input_ipie = IpieInput(options)
 
-    os.makedirs(ipie_input_dir, exist_ok=True)
+    for attribute, value in input_ipie.__dict__.items():
+        print(f"{attribute} = {value}")
+        exec(f"{attribute} = {value}")
+
+    # num_active_orbitals = options.get("num_active_orbitals", 5)
+    # num_active_electrons = options.get("num_active_electrons", 5)
+    # chkptfile_rohf = options.get("chkptfile_rohf", None)
+    # chkptfile_cas = options.get("chkptfile_cas", None)
+    # # ipie_input_dir contains the hamiltonian.h5 and wavefunction.h5 for running ipie
+    # ipie_input_dir = options.get("ipie_input_dir", "./")
+    # basis = options.get("basis", 'cc-pVTZ').lower()
+    # atom = options.get("atom", 'geo.xyz')
+    # dmrg = options.get("dmrg", 0)
+    # dmrg_states = options.get("dmrg_states", 1000)
+    # spin = options.get("spin", 1)
+    # label_molecule = options.get("label_molecule", "FeNTA")
+    # dmrg_thread = options.get("dmrg_thread", 2)
+    # threshold_wf = options.get("threshold_wf", 1e-6)
+    # file_wavefunction = options.get("file_wavefunction", None)
+    # generate_chol_hamiltonian = bool(options.get("generate_chol_hamiltonian", 1))
+    # nwalkers = options.get("nwalkers", 25)
+    # nsteps = options.get("nsteps", 10)
+    # nblocks = options.get("nblocks", 10)
+    # use_gpu = options.get("use_gpu", 0)
+    # num_gpus = options.get("num_gpus", 4)
+    # chol_cut = options.get("chol_cut", 1e-5)
+    # chol_split = options.get("chol_split", 0)
+    # hamiltonian_fname = f"ham_{label_molecule}_{basis}_{num_active_electrons}e_{num_active_orbitals}o.pickle"
+    # chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
+    # ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
+    # wfn_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_wfn.h5"
+    # chol_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chol.h5"
+    #
+    # os.makedirs(ipie_input_dir, exist_ok=True)
+
     multiplicity = spin + 1
     charge = 0
 
@@ -83,7 +92,7 @@ if __name__ == "__main__":
     my_casci = mcscf.CASCI(mf, num_active_orbitals, num_active_electrons)
     nocca_act = (num_active_electrons + spin) // 2
     noccb_act = (num_active_electrons - spin) // 2
-    if dmrg in (1, 'true'):
+    if dmrg:
         from pyscf import dmrgscf
         # dir_path = (f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o/"
         #             f"dmrg_M_{dmrg_states}")
@@ -104,21 +113,24 @@ if __name__ == "__main__":
         e_tot, e_cas, fcivec, mo_output, mo_energy = my_casci.kernel(mo)
     else:
         e_tot, e_cas, fcivec, mo_output, mo_energy = my_casci.kernel()
+    print('FCI Energy in CAS:', e_tot)
 
-    coeff, occa, occb = zip(
-        *fci.addons.large_ci(fcivec,
-                             num_active_orbitals,
-                             (nocca_act, noccb_act),
-                             tol=threshold_wf,
-                             return_strs=False)
-    )
+    if file_wavefunction:
+        coeff, occa, occb = input_ipie.gen_wave_function()
+    else:
+        coeff, occa, occb = zip(
+            *fci.addons.large_ci(fcivec,
+                                 num_active_orbitals,
+                                 (nocca_act, noccb_act),
+                                 tol=threshold_wf,
+                                 return_strs=False)
+        )
+
     # append the info on the MSD trial to the chk file from pyscf
     with h5py.File(os.path.join(ipie_input_dir, chk_fname), "r+") as fh5:
         fh5["mcscf/ci_coeffs"] = coeff
         fh5["mcscf/occs_alpha"] = occa
         fh5["mcscf/occs_beta"] = occb
-
-    print('FCI Energy in CAS:', e_tot)
 
     gen_ipie_input_from_pyscf_chk(os.path.join(ipie_input_dir, chk_fname),
                                   hamil_file=os.path.join(ipie_input_dir, ham_file),
@@ -133,4 +145,3 @@ if __name__ == "__main__":
         split_cholesky(os.path.join(ipie_input_dir, ham_file),
                        num_gpus,
                        chol_fname=os.path.join(ipie_input_dir, chol_fname))  # split the cholesky to 4 subfiles
-
