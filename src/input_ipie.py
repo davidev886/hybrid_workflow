@@ -124,8 +124,8 @@ class IpieInput(object):
         self.pop_control_freq = options.get("pop_control_freq", 5)
         self.num_gpus = options.get("num_gpus", 4)
         self.seed = options.get("seed", 9182746)
-        self.timestep = options("timestep", 0.005)
-        self.stabilize_freq = options("stabilise_freq", 5)
+        self.timestep = options.get("timestep", 0.005)
+        self.stabilize_freq = options.get("stabilise_freq", 5)
 
         # self.ncore_electrons = options.get("ncore_electrons", 0)
 
