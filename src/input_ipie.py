@@ -116,7 +116,12 @@ class IpieInput(object):
         self.nwalkers = options.get("nwalkers", 25)
         self.nsteps = options.get("nsteps", 10)
         self.nblocks = options.get("nblocks", 10)
+        self.pop_control_freq = options.get("pop_control_freq", 5)
         self.num_gpus = options.get("num_gpus", 4)
+        self.seed = options.get("seed", 9182746)
+        self.timestep = options("timestep", 0.005)
+        self.stabilize_freq = options("stabilise_freq", 5)
+
         # self.ncore_electrons = options.get("ncore_electrons", 0)
 
         # ipie_input_dir contains the hamiltonian.h5 and wavefunction.h5 for running ipie
