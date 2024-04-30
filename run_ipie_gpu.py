@@ -1,8 +1,13 @@
+"""
+Run ipie with gpu support
+
+"""
 import os
 import sys
 import numpy as np
 import json
-
+from pyscf import gto
+import h5py
 # env CUPY_ACCELERATORS = cutensor # for notebook, for .py you can set this in terminal
 
 try:
@@ -14,52 +19,42 @@ except ImportError:
 from ipie.config import config
 config.update_option("use_gpu", True)
 
-from pyscf import gto
-import h5py
-
-from ipie.trial_wavefunction.particle_hole import ParticleHole
-from ipie.hamiltonians.generic import Generic as HamGeneric
-from ipie.qmc.afqmc import AFQMC
-from ipie.systems.generic import Generic
+from ipie.trial_wavefunction.particle_hole import ParticleHole  # noqa: E402
+from ipie.hamiltonians.generic import Generic as HamGeneric  # noqa: E402
+from ipie.qmc.afqmc import AFQMC  # noqa: E402
+from ipie.systems.generic import Generic  # noqa: E402
+from src.input_ipie import IpieInput  # noqa: E402
 
 
 if __name__ == "__main__":
     np.set_printoptions(precision=6, suppress=True, linewidth=10000)
     np.random.seed(12)
-    # dmrgscf.settings.BLOCKEXE = os.popen("which block2main").read().strip()
-    # dmrgscf.settings.BLOCKEXE_COMPRESS_NEVPT = os.popen("which block2main").read().strip()
-    # dmrgscf.settings.MPIPREFIX = ''
 
     with open(sys.argv[1]) as f:
         options = json.load(f)
 
-    num_active_orbitals = options.get("num_active_orbitals", 5)
-    num_active_electrons = options.get("num_active_electrons", 5)
-    chkptfile_rohf = options.get("chkptfile_rohf", None)
-    chkptfile_cas = options.get("chkptfile_cas", None)
-    # ipie_input_dir contains the hamiltonian.h5 and wavefunction.h5 for running ipie
-    ipie_input_dir = options.get("ipie_input_dir", "./")
-    basis = options.get("basis", 'cc-pVTZ').lower()
-    atom = options.get("atom", 'geo.xyz')
-    dmrg = options.get("dmrg", 0)
-    dmrg_states = options.get("dmrg_states", 1000)
-    spin = options.get("spin", 1)
-    label_molecule = options.get("label_molecule", "FeNTA")
-    dmrg_thread = options.get("dmrg_thread", 2)
-    threshold_wf = options.get("threshold_wf", 1e-6)
-    generate_chol_hamiltonian = bool(options.get("generate_chol_hamiltonian", 1))
-    nwalkers = options.get("nwalkers", 25)
-    nsteps = options.get("nsteps", 10)
-    nblocks = options.get("nblocks", 10)
-    timestep = options.get("timestep", 0.005)
-    stabilize_freq = options.get("stabilize_freq", 5)
-    seed = options.get("seed", 96264512)
-    pop_control_freq = options.get("pop_control_freq", 5)
-    hamiltonian_fname = f"ham_{label_molecule}_{basis}_{num_active_electrons}e_{num_active_orbitals}o.pickle"
+    input_ipie = IpieInput(options)
+    num_active_orbitals = input_ipie.num_active_orbitals
+    num_active_electrons = input_ipie.num_active_electrons
+    basis = input_ipie.basis
+    atom = input_ipie.atom
+    charge = input_ipie.charge
+    spin = input_ipie.spin
+    label_molecule = input_ipie.label_molecule
+    nwalkers = input_ipie.nwalkers
+    nsteps = input_ipie.nsteps
+    nblocks = input_ipie.nblocks
+    seed = input_ipie.seed
+    pop_control_freq = input_ipie.pop_control_freq
+    use_gpu = input_ipie.use_gpu
+    ipie_input_dir = input_ipie.ipie_input_dir
+    ham_file = input_ipie.ham_file
+    wfn_file = input_ipie.wfn_file
+    chol_fname = input_ipie.chol_fname
+    timestep = input_ipie.timestep
+    stabilize_freq = input_ipie.stabilize_freq
 
-    os.makedirs(ipie_input_dir, exist_ok=True)
     multiplicity = spin + 1
-    charge = 0
 
     mol = gto.M(
         atom=atom,
@@ -68,13 +63,9 @@ if __name__ == "__main__":
         basis=basis,
         verbose=4
     )
-    nocca, noccb = mol.nelec
+    # nocca, noccb = mol.nelec
 
-    chk_fname = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_chk.h5"
-    ham_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_ham.h5"
-    wfn_file = f"{label_molecule}_s_{spin}_{basis}_{num_active_electrons}e_{num_active_orbitals}o_wfn.h5"
-
-    with h5py.File("hamiltonian.h5") as fa:
+    with h5py.File(os.path.join(ipie_input_dir, ham_file), "r") as fa:
         chol = fa["LXmn"][()]
         h1e = fa["hcore"][()]
         e0 = fa["e0"][()]
