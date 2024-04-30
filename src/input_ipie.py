@@ -159,7 +159,6 @@ class IpieInput(object):
             )
             self.mol = mol
 
-
             mf = scf.ROHF(mol)
             try:
                 os.remove(os.path.join(self.ipie_input_dir, self.chk_fname))
