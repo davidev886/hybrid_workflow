@@ -140,6 +140,28 @@ class IpieInput(object):
         self.wfn_file = f"{string_label_system}_wfn.h5"
         self.chol_fname = f"{string_label_system}_chol"
 
+        self.trial_name = ""
+        self.ndets = 0
+        str_date = datetime.today().strftime('%Y%m%d_%H%M%S')
+
+        if len(self.output_dir) == 0:
+            self.output_dir = str_date
+        else:
+            self.output_dir = self.output_dir + "_" + str_date
+        print(f"# using folder {self.output_dir} for afqmc input files and estimators")
+        os.makedirs(self.output_dir, exist_ok=True)
+        with open(os.path.join(self.output_dir, sys.argv[1]), 'w') as f:
+            json.dump(options, f, ensure_ascii=False, indent=4)
+
+        print(f"# using folder {self.ipie_input_dir} for afqmc hamiltonian.h5 and wavefunction.h5")
+        os.makedirs(self.ipie_input_dir, exist_ok=True)
+
+    def build_mf(self):
+        """
+            Build the mol and mf object
+
+        :return:
+        """
         pyscf_chkfile = self.chkptfile_rohf
         if pyscf_chkfile:
             if self.mcscf:
@@ -182,21 +204,7 @@ class IpieInput(object):
         print("# (nalpha, nbeta)_total =", self.mol_nelec)
         print("# (nalpha, nbeta)_active =", self.n_alpha, self.n_beta)
         print("# ncore_electrons", self.ncore_electrons)
-        self.trial_name = ""
-        self.ndets = 0
-        str_date = datetime.today().strftime('%Y%m%d_%H%M%S')
 
-        if len(self.output_dir) == 0:
-            self.output_dir = str_date
-        else:
-            self.output_dir = self.output_dir + "_" + str_date
-        print(f"# using folder {self.output_dir} for afqmc input files and estimators")
-        os.makedirs(self.output_dir, exist_ok=True)
-        with open(os.path.join(self.output_dir, sys.argv[1]), 'w') as f:
-            json.dump(options, f, ensure_ascii=False, indent=4)
-
-        print(f"# using folder {self.ipie_input_dir} for afqmc hamiltonian.h5 and wavefunction.h5")
-        os.makedirs(self.ipie_input_dir, exist_ok=True)
 
     def gen_wave_function(self):
         """
