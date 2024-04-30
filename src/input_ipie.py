@@ -1,3 +1,6 @@
+"""
+    Defines a class for handling input options and generate input hamiltonian ans wave function for ipie
+"""
 import numpy as np
 
 import os
@@ -6,7 +9,6 @@ import json
 from openfermion.linalg import get_sparse_operator
 from openfermion.hamiltonians import s_squared_operator
 from datetime import datetime
-import h5py
 from pyscf import gto, scf
 from ipie.utils.io import write_hamiltonian, write_wavefunction
 from ipie.utils.from_pyscf import (load_from_pyscf_chkfile,
@@ -70,7 +72,7 @@ def get_coeff_wf(final_state_vector, n_elec, ncore_electrons=None, thres=1e-6):
         coeff[i] = (-1) ** (
             normal_ordering_swap([2 * j for j in occas[i]] + [2 * j + 1 for j in occbs[i]])) * \
                    coeff[i]
-    ncore = ncore_electrons #// 2
+    ncore = ncore_electrons  # // 2
     core = [i for i in range(ncore)]
     occas = [np.array(core + [o + ncore for o in oa]) for oa in occas]
     occbs = [np.array(core + [o + ncore for o in ob]) for ob in occbs]
@@ -79,6 +81,9 @@ def get_coeff_wf(final_state_vector, n_elec, ncore_electrons=None, thres=1e-6):
 
 
 class IpieInput(object):
+    """
+       Class for input options
+    """
     def __init__(self, options):
 
         self.num_active_orbitals = options.get("num_active_orbitals", 5)
@@ -193,15 +198,11 @@ class IpieInput(object):
         print(f"# using folder {self.ipie_input_dir} for afqmc hamiltonian.h5 and wavefunction.h5")
         os.makedirs(self.ipie_input_dir, exist_ok=True)
 
-
-
     def gen_wave_function(self):
         """
             Generate wave function from self.file_wavefunction (Assumes little endian for the wavefunction)
         """
-        mol = self.mol
         num_active_orbitals = self.num_active_orbitals
-        num_active_electrons = self.num_active_electrons
         filen_state_vec = self.file_wavefunction
         file_path = self.ipie_input_dir
         ncore_electrons = self.ncore_electrons
@@ -241,26 +242,10 @@ class IpieInput(object):
             coeff = coeff[ixs]
             occas = np.array(occas)[ixs]
             occbs = np.array(occbs)[ixs]
-            # self.ndets = np.size(coeff)
-            # bare_filen_state_vec = os.path.splitext(os.path.basename(filen_state_vec))[0]
-            # self.trial_name = f'{bare_filen_state_vec}_msd_trial_{len(coeff)}.h5'
-
-            # write_wavefunction((coeff, occas, occbs),
-            #                    os.path.join(file_path, self.trial_name))
-            #
-            # n_alpha = len(occas[0])
-            # n_beta = len(occbs[0])
-            #
-            # with h5py.File(
-            #         os.path.join(file_path, self.trial_name),
-            #         'a') as fh5:
-            #     fh5['active_electrons'] = num_active_electrons
-            #     fh5['active_orbitals'] = num_active_orbitals
-            #     fh5['nelec'] = (n_alpha, n_beta)
+            self.ndets = np.size(coeff)
             return coeff, occas, occbs
 
         else:
-            hcore = self.scf_data["hcore"]
             ortho_ao_mat = self.scf_data["X"]
             mo_coeffs = self.scf_data["mo_coeff"]
             mo_occ = self.scf_data["mo_occ"]
@@ -299,7 +284,6 @@ class IpieInput(object):
         hcore = scf_data["hcore"]
         ortho_ao_mat = scf_data["X"]
         mo_coeffs = scf_data["mo_coeff"]
-        mo_occ = scf_data["mo_occ"]
         num_frozen_core = self.num_frozen_core
 
         if ortho_ao:
@@ -330,6 +314,10 @@ class IpieInput(object):
                           )
 
     def check_energy_state(self):
+        """
+        compute the energy of the trial wave function with openfermion
+        :return: energy
+        """
         filen_state_vec = self.file_wavefunction
 
         final_state_vector = np.loadtxt(filen_state_vec, dtype=complex)
@@ -379,7 +367,3 @@ def write_json_input_file():
     }
     with open("input_filename.json", "w") as f:
         f.write(json.dumps(basic, indent=4, separators=(",", ": ")))
-
-
-
-
