@@ -156,6 +156,14 @@ class IpieInput(object):
         print(f"# using folder {self.ipie_input_dir} for afqmc hamiltonian.h5 and wavefunction.h5")
         os.makedirs(self.ipie_input_dir, exist_ok=True)
 
+        self.mol = None
+        self.mf = None
+        self.scf_data = None
+        self.mol_nelec = None
+        self.n_alpha = None
+        self.n_beta = None
+        self.ncore_electrons = None
+
     def build_mf(self):
         """
             Build the mol and mf object
@@ -204,7 +212,6 @@ class IpieInput(object):
         print("# (nalpha, nbeta)_total =", self.mol_nelec)
         print("# (nalpha, nbeta)_active =", self.n_alpha, self.n_beta)
         print("# ncore_electrons", self.ncore_electrons)
-
 
     def gen_wave_function(self):
         """
