@@ -1,4 +1,3 @@
-
 # env CUPY_ACCELERATORS = cutensor # for notebook, for .py you can set this in terminal
 
 import cupy
@@ -26,7 +25,7 @@ mol = gto.M(
     verbose=3,
     spin=nocca - noccb,
     unit="Bohr",
-    )
+)
 
 mf = scf.RHF(mol)
 mf.chkfile = "scf.chk"
@@ -39,7 +38,7 @@ e_tot, e_cas, fcivec, mo, mo_energy = mc.kernel()
 
 coeff, occa, occb = zip(
     *fci.addons.large_ci(fcivec, M, (nocca, noccb), tol=1e-8, return_strs=False)
-    )
+)
 
 with h5py.File("scf.chk", "r+") as fh5:
     fh5["mcscf/ci_coeffs"] = coeff
@@ -47,8 +46,7 @@ with h5py.File("scf.chk", "r+") as fh5:
     fh5["mcscf/occs_beta"] = occb
 
 gen_ipie_input_from_pyscf_chk("scf.chk", mcscf=True)
-mol_nelec = [8, 6]
-
+mol_nelec = (8, 6)
 
 with h5py.File("hamiltonian.h5") as fa:
     chol = fa["LXmn"][()]
@@ -60,9 +58,9 @@ system = Generic(nelec=mol_nelec)
 
 num_chol = chol.shape[0]
 ham = HamGeneric(
-numpy.array([h1e, h1e]),
-chol.transpose((1, 2, 0)).reshape((num_basis * num_basis, num_chol)),
-e0,
+    numpy.array([h1e, h1e]),
+    chol.transpose((1, 2, 0)).reshape((num_basis * num_basis, num_chol)),
+    e0,
 )
 
 with h5py.File("wavefunction.h5", "r") as fh5:
@@ -71,11 +69,11 @@ with h5py.File("wavefunction.h5", "r") as fh5:
     occb = fh5["occ_beta"][:]
     wavefunction = (coeff, occa, occb)
     trial = ParticleHole(
-    wavefunction,
-    mol_nelec,
-    num_basis,
-    num_dets_for_props=len(wavefunction[0]),
-    verbose=True,
+        wavefunction,
+        mol_nelec,
+        num_basis,
+        num_dets_for_props=len(wavefunction[0]),
+        verbose=True,
     )
 
 trial.compute_trial_energy = True
@@ -94,6 +92,6 @@ afqmc_msd = AFQMC.build(
     seed=96264512,
     pop_control_freq=5,
     verbose=True,
-    )
+)
 afqmc_msd.run()
 afqmc_msd.finalise(verbose=True)
